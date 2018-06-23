@@ -1,0 +1,27 @@
+output "api_id" {
+  description = "REST API ID."
+  value       = "${aws_api_gateway_rest_api.api.id}"
+}
+
+output "api_root_resource_id" {
+  description = "REST API root resource ID."
+  value       = "${aws_api_gateway_rest_api.api.root_resource_id}"
+}
+
+output "callback_topics" {
+  description = "SNS topics created."
+  value       = "${aws_sns_topic.callback_ids.*.name}"
+}
+
+output "event_topics" {
+  description = "SNS topics created."
+  value       = "${aws_sns_topic.event_types.*.name}"
+}
+
+output "request_urls" {
+  description = "Slackbot Request URLs"
+  value {
+    events                 = "${aws_api_gateway_deployment.test.invoke_url}/${aws_api_gateway_resource.events.path_part}",
+    interactive_components = "${aws_api_gateway_deployment.test.invoke_url}/${aws_api_gateway_resource.interactive_components.path_part}"
+  }
+}
