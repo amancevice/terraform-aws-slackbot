@@ -18,6 +18,11 @@ output "event_topics" {
   value       = "${aws_sns_topic.event_types.*.name}"
 }
 
+output "kms_key_id" {
+  description = "Slackbot KMS Key ID."
+  value       = "${aws_kms_key.slackbot.key_id}"
+}
+
 output "request_urls" {
   description = "Slackbot Request URLs"
   value {

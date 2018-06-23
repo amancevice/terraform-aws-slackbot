@@ -1,7 +1,17 @@
+// AWS
+variable "aws_region" {
+  description = "AWS region name."
+  default     = ""
+}
+
+variable "aws_account_id" {
+  description = "AWS account ID."
+  default     = ""
+}
+
 // Slack
-variable "encrypted_verification_token" {
-  description = "Encrypted Slack verification token."
-  default     = "<encrypted-token-here>"
+variable "verification_token" {
+  description = "Slack verification token."
 }
 
 // Role

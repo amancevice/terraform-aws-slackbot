@@ -3,8 +3,10 @@ provider "archive" {
 }
 
 locals {
-  sns_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
-  log_arn_prefix = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+  aws_region     = "${coalesce("${var.aws_region}", "${data.aws_region.current.name}")}"
+  aws_account_id = "${coalesce("${var.aws_account_id}", "${data.aws_caller_identity.current.account_id}")}"
+  sns_arn_prefix = "arn:aws:sns:${local.aws_region}:${local.aws_account_id}"
+  log_arn_prefix = "arn:aws:logs:${local.aws_region}:${local.aws_account_id}"
 }
 
 data "aws_region" "current" {
@@ -78,6 +80,11 @@ resource "aws_kms_key" "slackbot" {
 resource "aws_kms_alias" "slackbot" {
   name          = "${var.kms_key_alias}"
   target_key_id = "${aws_kms_key.slackbot.key_id}"
+}
+
+data "aws_kms_ciphertext" "verification_token" {
+  key_id    = "${aws_kms_key.slackbot.key_id}"
+  plaintext = "${var.verification_token}"
 }
 
 // REST API
@@ -200,7 +207,7 @@ resource "aws_lambda_function" "events" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${var.encrypted_verification_token}"
+      ENCRYPTED_VERIFICATION_TOKEN = "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}"
       SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
     }
   }
@@ -242,7 +249,7 @@ resource "aws_lambda_function" "interactive_components" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${var.encrypted_verification_token}"
+      ENCRYPTED_VERIFICATION_TOKEN = "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}"
       SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
     }
   }

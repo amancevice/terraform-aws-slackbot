@@ -14,10 +14,13 @@ provider "aws" {
 }
 
 module "slackbot" {
-  source                       = "amancevice/slackbot/aws"
-  encrypted_verification_token = "<encrypted-slack-verification-token>"
+  source             = "amancevice/slackbot/aws"
+  verification_token = "<slack-verification-token>"
 }
 ```
+
+_Note: this is not a secure way of storing your verification token. See the [example](./example) for more secure/detailed deployment._
+
 
 In a terminal window, initialize the state:
 
