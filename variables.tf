@@ -12,6 +12,12 @@ variable "aws_account_id" {
 // Slack
 variable "slack_verification_token" {
   description = "Slack verification token."
+  default     = "<slack-verification-token>"
+}
+
+variable "encrypted_slack_verification_token" {
+  description = "Encrypted Slack verification token."
+  default     = ""
 }
 
 // Role

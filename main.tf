@@ -3,10 +3,11 @@ provider "archive" {
 }
 
 locals {
-  aws_region     = "${coalesce("${var.aws_region}", "${data.aws_region.current.name}")}"
-  aws_account_id = "${coalesce("${var.aws_account_id}", "${data.aws_caller_identity.current.account_id}")}"
-  sns_arn_prefix = "arn:aws:sns:${local.aws_region}:${local.aws_account_id}"
-  log_arn_prefix = "arn:aws:logs:${local.aws_region}:${local.aws_account_id}"
+  aws_account_id     = "${coalesce("${var.aws_account_id}", "${data.aws_caller_identity.current.account_id}")}"
+  aws_region         = "${coalesce("${var.aws_region}", "${data.aws_region.current.name}")}"
+  log_arn_prefix     = "arn:aws:logs:${local.aws_region}:${local.aws_account_id}"
+  sns_arn_prefix     = "arn:aws:sns:${local.aws_region}:${local.aws_account_id}"
+  verification_token = "${coalesce("${var.encrypted_slack_verification_token}", "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}")}"
 }
 
 data "aws_region" "current" {
@@ -207,7 +208,7 @@ resource "aws_lambda_function" "events" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}"
+      ENCRYPTED_VERIFICATION_TOKEN = "${local.verification_token}"
       SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
     }
   }
@@ -249,7 +250,7 @@ resource "aws_lambda_function" "interactive_components" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}"
+      ENCRYPTED_VERIFICATION_TOKEN = "${local.verification_token}"
       SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
     }
   }
