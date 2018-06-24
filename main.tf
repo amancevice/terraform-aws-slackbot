@@ -84,7 +84,7 @@ resource "aws_kms_alias" "slackbot" {
 
 data "aws_kms_ciphertext" "verification_token" {
   key_id    = "${aws_kms_key.slackbot.key_id}"
-  plaintext = "${var.verification_token}"
+  plaintext = "${var.slack_verification_token}"
 }
 
 // REST API

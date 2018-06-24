@@ -10,7 +10,7 @@ variable "aws_account_id" {
 }
 
 // Slack
-variable "verification_token" {
+variable "slack_verification_token" {
   description = "Slack verification token."
 }
 
