@@ -21,13 +21,14 @@ function processEvent(event, callback) {
   }
 
   else if (params.type === 'url_verification') {
-    console.log('CHALLENGE');
-    callback(null, {challenge: params.challenge});
+    const challenge = {challenge: params.challenge};
+    console.log(`CHALLENGE ${JSON.stringify(challenge)}`);
+    callback(null, challenge);
   }
 
   else if (params.type === 'event_callback') {
     const SNS = new AWS.SNS();
-    console.log(`TOPIC ${sns_topic_prefix}:${params.event.type}`);
+    console.log(`PUBLISH ${sns_topic_prefix}:${params.event.type}`);
     SNS.publish({
         Message: Buffer.from(JSON.stringify(payload)).toString('base64'),
         TopicArn: `${sns_topic_prefix}:${params.event.type}`
@@ -63,7 +64,7 @@ exports.handler = (event, context, callback) => {
   }
 
   // Encrypted token not set
-  else if (!encrypted_verificaton_token || encrypted_verificaton_token === '<slack-verification-token>') {
+  else if (!encrypted_verificaton_token) {
     done('Verification token has not been set.');
   }
 

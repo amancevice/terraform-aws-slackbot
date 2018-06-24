@@ -18,6 +18,11 @@ output "kms_key_id" {
   value       = "${aws_kms_key.slackbot.key_id}"
 }
 
+output "encrypted_slack_verification_token" {
+  description = "Encrypted Slack verification token"
+  value       = "${local.encrypted_slack_verification_token}"
+}
+
 output "events_request_url" {
   description = "Events Request URL."
   value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.events.path_part}"

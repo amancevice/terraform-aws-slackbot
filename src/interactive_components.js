@@ -24,7 +24,7 @@ function processEvent(event, callback) {
   }
 
   const SNS = new AWS.SNS();
-  console.log(`TOPIC ${sns_topic_prefix}:${payload.callback_id}`);
+  console.log(`PUBLISH ${sns_topic_prefix}:${payload.callback_id}`);
   SNS.publish({
       Message: Buffer.from(JSON.stringify(payload)).toString('base64'),
       TopicArn: `${sns_topic_prefix}:${payload.callback_id}`
