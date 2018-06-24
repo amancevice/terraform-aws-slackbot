@@ -93,7 +93,7 @@ resource "aws_api_gateway_rest_api" "api" {
   name        =  "${var.api_name}"
 }
 
-resource "aws_api_gateway_deployment" "test" {
+resource "aws_api_gateway_deployment" "api" {
   depends_on  = [
     "aws_api_gateway_integration.events",
     "aws_api_gateway_integration.interactive_components"
@@ -222,7 +222,7 @@ resource "aws_lambda_permission" "events" {
   function_name = "${aws_lambda_function.events.arn}"
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
-  source_arn    = "${aws_api_gateway_deployment.test.execution_arn}/POST/${aws_api_gateway_resource.events.path_part}"
+  source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.events.path_part}"
 }
 
 // Interactive Components
@@ -267,5 +267,5 @@ resource "aws_lambda_permission" "interactive_components" {
 
   # The /*/* portion grants access from any method on any resource
   # within the API Gateway "REST API".
-  source_arn    = "${aws_api_gateway_deployment.test.execution_arn}/POST/${aws_api_gateway_resource.interactive_components.path_part}"
+  source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.interactive_components.path_part}"
 }
