@@ -13,16 +13,6 @@ output "api_root_resource_id" {
   value       = "${aws_api_gateway_rest_api.api.root_resource_id}"
 }
 
-output "callback_topics" {
-  description = "SNS topics created."
-  value       = "${aws_sns_topic.callback_ids.*.name}"
-}
-
-output "event_topics" {
-  description = "SNS topics created."
-  value       = "${aws_sns_topic.event_types.*.name}"
-}
-
 output "kms_key_id" {
   description = "Slackbot KMS Key ID."
   value       = "${aws_kms_key.slackbot.key_id}"
@@ -34,4 +24,12 @@ output "request_urls" {
     events                 = "${aws_api_gateway_deployment.test.invoke_url}/${aws_api_gateway_resource.events.path_part}",
     interactive_components = "${aws_api_gateway_deployment.test.invoke_url}/${aws_api_gateway_resource.interactive_components.path_part}"
   }
+}
+
+output "sns_topics" {
+  description = "SNS topics created."
+  value       = [
+    "${aws_sns_topic.callback_ids.*.name}",
+    "${aws_sns_topic.event_types.*.name}"
+  ]
 }
