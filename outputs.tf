@@ -18,9 +18,9 @@ output "callback_resource_ids" {
   value       = "${zipmap("${var.callback_ids}", "${aws_api_gateway_resource.callback.*.id}")}"
 }
 
-output "callback_topics" {
+output "callback_topic_arns" {
   description = "SNS topics for Slack callbacks."
-  value       = ["${aws_sns_topic.callback_ids.*.name}"]
+  value       = ["${aws_sns_topic.callback_ids.*.arn}"]
 }
 
 output "callbacks_request_url" {
@@ -33,9 +33,9 @@ output "event_resource_ids" {
   value       = "${zipmap("${var.event_types}", "${aws_api_gateway_resource.event.*.id}")}"
 }
 
-output "event_topics" {
+output "event_topic_arns" {
   description = "SNS topics for Slack events."
-  value       = ["${aws_sns_topic.event_types.*.name}"]
+  value       = ["${aws_sns_topic.event_types.*.arn}"]
 }
 
 output "events_request_url" {

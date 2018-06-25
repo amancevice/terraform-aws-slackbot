@@ -23,7 +23,7 @@ variable "auto_encrypt_token" {
 // Role
 variable "role_name" {
   description = "Name of role for Slackbot Lambdas."
-  default     = "slackbot-role"
+  default     = ""
 }
 
 variable "role_path" {
@@ -31,9 +31,9 @@ variable "role_path" {
   default     = "/service-role/"
 }
 
-variable "role_policy_name" {
+variable "role_inline_policy_name" {
   description = "Name of inline Slackbot role policy."
-  default     = "slackbot-role-inline-policy"
+  default     = ""
 }
 
 // KMS Key

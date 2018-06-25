@@ -6,6 +6,8 @@ locals {
   aws_account_id                     = "${coalesce("${var.aws_account_id}", "${data.aws_caller_identity.current.account_id}")}"
   aws_region                         = "${coalesce("${var.aws_region}", "${data.aws_region.current.name}")}"
   log_arn_prefix                     = "arn:aws:logs:${local.aws_region}:${local.aws_account_id}"
+  role_name                          = "${coalesce("${var.role_name}", "slackbot-role")}"
+  role_inline_policy_name            = "${coalesce("${var.role_inline_policy_name}", "slackbot-role-inline-policy")}"
   sns_arn_prefix                     = "arn:aws:sns:${local.aws_region}:${local.aws_account_id}"
   slack_verification_token_encrypted = "${element(coalescelist("${data.aws_kms_ciphertext.verification_token.*.ciphertext_blob}", list("${var.slack_verification_token}")), 0)}"
 }
@@ -58,12 +60,12 @@ data "aws_iam_policy_document" "inline" {
 
 resource "aws_iam_role" "slackbot" {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
-  name               = "${var.role_name}"
+  name               = "${local.role_name}"
   path               = "${var.role_path}"
 }
 
 resource "aws_iam_role_policy" "slackbot" {
-  name   = "${var.role_policy_name}"
+  name   = "${local.role_inline_policy_name}"
   role   = "${aws_iam_role.slackbot.id}"
   policy = "${data.aws_iam_policy_document.inline.json}"
 }
