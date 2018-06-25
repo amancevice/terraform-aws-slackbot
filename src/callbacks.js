@@ -27,7 +27,7 @@ function processEvent(event, callback) {
   console.log(`PUBLISH ${sns_topic_prefix}:${payload.callback_id}`);
   SNS.publish({
       Message: Buffer.from(JSON.stringify(payload)).toString('base64'),
-      TopicArn: `${sns_topic_prefix}:${payload.callback_id}`
+      TopicArn: `${sns_topic_prefix}:slack_callback_${payload.callback_id}`
     }, (err, data) => {
       if (err) {
         console.log('SNS error:', err);

@@ -7,7 +7,7 @@ locals {
   aws_region                         = "${coalesce("${var.aws_region}", "${data.aws_region.current.name}")}"
   log_arn_prefix                     = "arn:aws:logs:${local.aws_region}:${local.aws_account_id}"
   role_name                          = "${coalesce("${var.role_name}", "slackbot-role")}"
-  role_inline_policy_name            = "${coalesce("${var.role_inline_policy_name}", "slackbot-role-inline-policy")}"
+  role_inline_policy_name            = "${coalesce("${var.role_inline_policy_name}", "${local.role_name}-inline-policy")}"
   sns_arn_prefix                     = "arn:aws:sns:${local.aws_region}:${local.aws_account_id}"
   slack_verification_token_encrypted = "${element(coalescelist("${data.aws_kms_ciphertext.verification_token.*.ciphertext_blob}", list("${var.slack_verification_token}")), 0)}"
 }
