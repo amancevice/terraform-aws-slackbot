@@ -17,7 +17,7 @@ variable "slack_verification_token" {
 
 variable "auto_encrypt_token" {
   description = "Flag to automatically encrypt token."
-  default     = false
+  default     = true
 }
 
 // Role
