@@ -3,8 +3,8 @@ provider "aws" {
 }
 
 module "slackbot" {
-  source             = "amancevice/slackbot/aws"
-  callback_ids       = ["my_callback_1"]
-  event_types        = ["channel_rename"]
-  verification_token = "${var.slackbot_verification_token}"
+  source                   = "amancevice/slackbot/aws"
+  callback_ids             = ["my_callback_1"]
+  event_types              = ["channel_rename"]
+  slack_verification_token = "${var.slack_verification_token}"
 }

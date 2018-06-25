@@ -28,9 +28,14 @@ output "events_request_url" {
   value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.events.path_part}"
 }
 
-output "interactive_components_request_url" {
-  description = "Interactive Components Request URL."
-  value        = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.interactive_components.path_part}"
+output "callbacks_request_url" {
+  description = "Callbacks Request URL."
+  value        = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.callbacks.path_part}"
+}
+
+output "slash_commands_resource_id" {
+  description = "Slash Command resource ID."
+  value       = "${aws_api_gateway_resource.slash_commands.id}"
 }
 
 output "sns_topics" {

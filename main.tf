@@ -41,7 +41,7 @@ data "aws_iam_policy_document" "inline" {
     ]
     resources = [
       "${local.log_arn_prefix}:log-group:/aws/lambda/${aws_lambda_function.events.function_name}:*",
-      "${local.log_arn_prefix}:log-group:/aws/lambda/${aws_lambda_function.interactive_components.function_name}:*"
+      "${local.log_arn_prefix}:log-group:/aws/lambda/${aws_lambda_function.callbacks.function_name}:*"
     ]
   }
 
@@ -97,7 +97,7 @@ resource "aws_api_gateway_rest_api" "api" {
 resource "aws_api_gateway_deployment" "api" {
   depends_on  = [
     "aws_api_gateway_integration.events",
-    "aws_api_gateway_integration.interactive_components"
+    "aws_api_gateway_integration.callbacks"
   ]
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${var.api_stage_name}"
@@ -108,6 +108,13 @@ resource "aws_api_gateway_resource" "events" {
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   parent_id   = "${aws_api_gateway_rest_api.api.root_resource_id}"
   path_part   = "events"
+}
+
+resource "aws_api_gateway_resource" "event" {
+  count       = "${length("${var.event_types}")}"
+  rest_api_id = "${aws_api_gateway_rest_api.api.id}"
+  parent_id   = "${aws_api_gateway_resource.events.id}"
+  path_part   = "${element("${var.event_types}", count.index)}"
 }
 
 resource "aws_api_gateway_method" "events_post" {
@@ -138,33 +145,40 @@ resource "aws_api_gateway_method_response" "events_200" {
   }
 }
 
-// Interactive Components API
-resource "aws_api_gateway_resource" "interactive_components" {
+// Callbacks API
+resource "aws_api_gateway_resource" "callbacks" {
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   parent_id   = "${aws_api_gateway_rest_api.api.root_resource_id}"
-  path_part   = "interactive-components"
+  path_part   = "callbacks"
 }
 
-resource "aws_api_gateway_method" "interactive_components_post" {
+resource "aws_api_gateway_resource" "callback" {
+  count       = "${length("${var.callback_ids}")}"
+  rest_api_id = "${aws_api_gateway_rest_api.api.id}"
+  parent_id   = "${aws_api_gateway_resource.callbacks.id}"
+  path_part   = "${element("${var.callback_ids}", count.index)}"
+}
+
+resource "aws_api_gateway_method" "callbacks_post" {
   authorization = "NONE"
   http_method   = "POST"
-  resource_id   = "${aws_api_gateway_resource.interactive_components.id}"
+  resource_id   = "${aws_api_gateway_resource.callbacks.id}"
   rest_api_id   = "${aws_api_gateway_rest_api.api.id}"
 }
 
-resource "aws_api_gateway_integration" "interactive_components" {
+resource "aws_api_gateway_integration" "callbacks" {
   content_handling        = "CONVERT_TO_TEXT"
-  http_method             = "${aws_api_gateway_method.interactive_components_post.http_method}"
+  http_method             = "${aws_api_gateway_method.callbacks_post.http_method}"
   integration_http_method = "POST"
-  resource_id             = "${aws_api_gateway_resource.interactive_components.id}"
+  resource_id             = "${aws_api_gateway_resource.callbacks.id}"
   rest_api_id             = "${aws_api_gateway_rest_api.api.id}"
   type                    = "AWS_PROXY"
-  uri                     = "${aws_lambda_function.interactive_components.invoke_arn}"
+  uri                     = "${aws_lambda_function.callbacks.invoke_arn}"
 }
 
-resource "aws_api_gateway_method_response" "interactive_components_200" {
-  http_method = "${aws_api_gateway_method.interactive_components_post.http_method}"
-  resource_id = "${aws_api_gateway_method.interactive_components_post.resource_id}"
+resource "aws_api_gateway_method_response" "callbacks_200" {
+  http_method = "${aws_api_gateway_method.callbacks_post.http_method}"
+  resource_id = "${aws_api_gateway_method.callbacks_post.resource_id}"
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   status_code = "200"
 
@@ -173,15 +187,22 @@ resource "aws_api_gateway_method_response" "interactive_components_200" {
   }
 }
 
+// Slash Commands API
+resource "aws_api_gateway_resource" "slash_commands" {
+  rest_api_id = "${aws_api_gateway_rest_api.api.id}"
+  parent_id   = "${aws_api_gateway_rest_api.api.root_resource_id}"
+  path_part   = "slash-commands"
+}
+
 // SNS Topics
 resource "aws_sns_topic" "callback_ids" {
   count = "${length("${var.callback_ids}")}"
-  name  = "${element("${var.callback_ids}", count.index)}"
+  name  = "slack_callback_${element("${var.callback_ids}", count.index)}"
 }
 
 resource "aws_sns_topic" "event_types" {
   count = "${length("${var.event_types}")}"
-  name  = "${element("${var.event_types}", count.index)}"
+  name  = "slack_event_${element("${var.event_types}", count.index)}"
 }
 
 // Events
@@ -226,27 +247,27 @@ resource "aws_lambda_permission" "events" {
   source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.events.path_part}"
 }
 
-// Interactive Components
-data "archive_file" "interactive_components" {
+// Callbacks
+data "archive_file" "callbacks" {
   type        = "zip"
-  output_path = "${path.module}/dist/interactive-components.zip"
+  output_path = "${path.module}/dist/callbacks.zip"
 
   source {
-    content  = "${file("${path.module}/src/interactive_components.js")}"
-    filename = "interactive_components.js"
+    content  = "${file("${path.module}/src/callbacks.js")}"
+    filename = "callbacks.js"
   }
 }
 
-resource "aws_lambda_function" "interactive_components" {
-  description      = "${var.interactive_components_lambda_description}"
-  filename         = "${data.archive_file.interactive_components.output_path}"
-  function_name    = "${var.interactive_components_lambda_function_name}"
-  handler          = "interactive_components.handler"
-  memory_size      = "${var.interactive_components_lambda_memory_size}"
+resource "aws_lambda_function" "callbacks" {
+  description      = "${var.callbacks_lambda_description}"
+  filename         = "${data.archive_file.callbacks.output_path}"
+  function_name    = "${var.callbacks_lambda_function_name}"
+  handler          = "callbacks.handler"
+  memory_size      = "${var.callbacks_lambda_memory_size}"
   role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
-  source_code_hash = "${base64sha256(file("${data.archive_file.interactive_components.output_path}"))}"
-  timeout          = "${var.interactive_components_lambda_timeout}"
+  source_code_hash = "${base64sha256(file("${data.archive_file.callbacks.output_path}"))}"
+  timeout          = "${var.callbacks_lambda_timeout}"
 
   environment {
     variables = {
@@ -260,13 +281,13 @@ resource "aws_lambda_function" "interactive_components" {
   }
 }
 
-resource "aws_lambda_permission" "interactive_components" {
+resource "aws_lambda_permission" "callbacks" {
   action        = "lambda:InvokeFunction"
-  function_name = "${aws_lambda_function.interactive_components.arn}"
+  function_name = "${aws_lambda_function.callbacks.arn}"
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
 
   # The /*/* portion grants access from any method on any resource
   # within the API Gateway "REST API".
-  source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.interactive_components.path_part}"
+  source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.callbacks.path_part}"
 }

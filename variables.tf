@@ -85,15 +85,15 @@ variable "api_stage_name" {
   default     = "v1"
 }
 
-// SNS Topics
+// Slack resources
 variable "callback_ids" {
-  description = "List of SNS topics to create."
+  description = "List of Slack callback IDs."
   type        = "list"
   default     = []
 }
 
 variable "event_types" {
-  description = "List of SNS topics to create."
+  description = "List of slack event types."
   type        = "list"
   default     = []
 }
@@ -128,17 +128,17 @@ variable "events_lambda_timeout" {
   default     = 3
 }
 
-variable "interactive_components_lambda_description" {
+variable "callbacks_lambda_description" {
   description = "Description of the function."
-  default     = "Slack interactive components handler"
+  default     = "Slack callbacks handler"
 }
 
-variable "interactive_components_lambda_function_name" {
+variable "callbacks_lambda_function_name" {
   description = "Lambda Function for publishing events from Slack to SNS."
-  default     = "slack-interactive-components"
+  default     = "slack-callbacks"
 }
 
-variable "interactive_components_lambda_tags" {
+variable "callbacks_lambda_tags" {
   description = "A set of key/value label pairs to assign to the function."
   type        = "map"
 
@@ -147,12 +147,12 @@ variable "interactive_components_lambda_tags" {
   }
 }
 
-variable "interactive_components_lambda_memory_size" {
+variable "callbacks_lambda_memory_size" {
   description = "Memory for Lambda function."
   default     = 128
 }
 
-variable "interactive_components_lambda_timeout" {
+variable "callbacks_lambda_timeout" {
   description = "Timeout in seconds for Lambda function."
   default     = 3
 }
