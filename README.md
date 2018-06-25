@@ -22,7 +22,6 @@ module "slackbot" {
 
 _Note: this is not a secure way of storing your verification token. See the [example](./example) for more secure/detailed deployment._
 
-
 In a terminal window, initialize the state:
 
 ```bash
