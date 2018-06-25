@@ -5,7 +5,7 @@ provider "archive" {
 locals {
   aws_account_id                     = "${coalesce("${var.aws_account_id}", "${data.aws_caller_identity.current.account_id}")}"
   aws_region                         = "${coalesce("${var.aws_region}", "${data.aws_region.current.name}")}"
-  encrypted_slack_verification_token = "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}"
+  slack_verification_token_encrypted = "${coalesce("${var.slack_verification_token_encrypted}", "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}")}"
   log_arn_prefix                     = "arn:aws:logs:${local.aws_region}:${local.aws_account_id}"
   sns_arn_prefix                     = "arn:aws:sns:${local.aws_region}:${local.aws_account_id}"
 }
@@ -229,7 +229,7 @@ resource "aws_lambda_function" "events" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${local.encrypted_slack_verification_token}"
+      ENCRYPTED_VERIFICATION_TOKEN = "${local.slack_verification_token_encrypted}"
       SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
     }
   }
@@ -271,7 +271,7 @@ resource "aws_lambda_function" "callbacks" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${local.encrypted_slack_verification_token}"
+      ENCRYPTED_VERIFICATION_TOKEN = "${local.slack_verification_token_encrypted}"
       SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
     }
   }
