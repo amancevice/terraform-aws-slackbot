@@ -7,4 +7,5 @@ module "slackbot" {
   callback_ids             = ["my_callback_1"]
   event_types              = ["channel_rename"]
   slack_verification_token = "${var.slack_verification_token}"
+  auto_encrypt_token       = true
 }

@@ -56,7 +56,7 @@ exports.handler = (event, context, callback) => {
   }
 
   // Encrypted token not set
-  else if (!encrypted_verificaton_token || encrypted_verificaton_token === '<slack-verification-token>') {
+  else if (!encrypted_verificaton_token || encrypted_verificaton_token === '<kms-encrypted-slack-verification-token>') {
     done('Verification token has not been set.');
   }
 

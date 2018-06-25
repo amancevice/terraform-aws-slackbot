@@ -5,9 +5,9 @@ provider "archive" {
 locals {
   aws_account_id                     = "${coalesce("${var.aws_account_id}", "${data.aws_caller_identity.current.account_id}")}"
   aws_region                         = "${coalesce("${var.aws_region}", "${data.aws_region.current.name}")}"
-  slack_verification_token_encrypted = "${coalesce("${var.slack_verification_token_encrypted}", "${data.aws_kms_ciphertext.verification_token.ciphertext_blob}")}"
   log_arn_prefix                     = "arn:aws:logs:${local.aws_region}:${local.aws_account_id}"
   sns_arn_prefix                     = "arn:aws:sns:${local.aws_region}:${local.aws_account_id}"
+  slack_verification_token_encrypted = "${element(coalescelist("${data.aws_kms_ciphertext.verification_token.*.ciphertext_blob}", list("${var.slack_verification_token}")), 0)}"
 }
 
 data "aws_region" "current" {
@@ -84,6 +84,7 @@ resource "aws_kms_alias" "slackbot" {
 }
 
 data "aws_kms_ciphertext" "verification_token" {
+  count     = "${var.auto_encrypt_token}"
   key_id    = "${aws_kms_key.slackbot.key_id}"
   plaintext = "${var.slack_verification_token}"
 }

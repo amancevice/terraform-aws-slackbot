@@ -14,8 +14,9 @@ provider "aws" {
 }
 
 module "slackbot" {
-  source             = "amancevice/slackbot/aws"
-  verification_token = "<slack-verification-token>"
+  source                   = "amancevice/slackbot/aws"
+  slack_verification_token = "<slack-verification-token>"
+  auto_encrypt_token       = true
 }
 ```
 
