@@ -3,6 +3,7 @@ provider "archive" {
 }
 
 locals {
+  kms_key_alias                      = "${coalesce("${var.kms_key_alias}", "alias/${api_name}")}"
   log_arn_prefix                     = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
   role_name                          = "${coalesce("${var.role_name}", "${var.api_name}-role")}"
   role_inline_policy_name            = "${coalesce("${var.role_inline_policy_name}", "${local.role_name}-inline-policy")}"
@@ -205,7 +206,7 @@ resource "aws_kms_key" "slackbot" {
 }
 
 resource "aws_kms_alias" "slackbot" {
-  name          = "${var.kms_key_alias}"
+  name          = "${local.kms_key_alias}"
   target_key_id = "${aws_kms_key.slackbot.key_id}"
 }
 

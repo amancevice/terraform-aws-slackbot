@@ -90,7 +90,7 @@ variable "events_lambda_timeout" {
 
 variable "kms_key_alias" {
   description = "KMS Key alias."
-  default     = "alias/slackbot"
+  default     = ""
 }
 
 variable "kms_key_deletion_window_in_days" {
