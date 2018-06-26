@@ -4,7 +4,7 @@ provider "archive" {
 
 locals {
   log_arn_prefix                     = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
-  role_name                          = "${coalesce("${var.role_name}", "slackbot-role")}"
+  role_name                          = "${coalesce("${var.role_name}", "${var.api_name}-role")}"
   role_inline_policy_name            = "${coalesce("${var.role_inline_policy_name}", "${local.role_name}-inline-policy")}"
   sns_arn_prefix                     = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
   slack_verification_token_encrypted = "${element(coalescelist("${data.aws_kms_ciphertext.verification_token.*.ciphertext_blob}", list("${var.slack_verification_token}")), 0)}"
