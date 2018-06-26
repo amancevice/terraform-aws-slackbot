@@ -28,10 +28,11 @@ function processEvent(event, callback) {
 
   else if (params.type === 'event_callback') {
     const SNS = new AWS.SNS();
-    console.log(`PUBLISH ${sns_topic_prefix}:${params.event.type}`);
+    const topic = `${sns_topic_prefix}:slack_event_${params.event.type}`;
+    console.log(`TOPIC ${topic}`);
     SNS.publish({
         Message: Buffer.from(JSON.stringify(payload)).toString('base64'),
-        TopicArn: `${sns_topic_prefix}:slack_event_${params.event.type}`
+        TopicArn: topic
       }, (err, data) => {
         if (err) {
           console.log('SNS error:', err);
