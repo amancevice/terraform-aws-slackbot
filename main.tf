@@ -218,7 +218,7 @@ resource "aws_lambda_function" "callbacks" {
   memory_size      = "${var.callbacks_lambda_memory_size}"
   role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
-  source_code_hash = "${base64sha256(file("${data.archive_file.callbacks.output_path}"))}"
+  source_code_hash = "${data.archive_file.callbacks.output_base64sha256}"
   timeout          = "${var.callbacks_lambda_timeout}"
 
   environment {
@@ -241,7 +241,7 @@ resource "aws_lambda_function" "events" {
   memory_size      = "${var.events_lambda_memory_size}"
   role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
-  source_code_hash = "${base64sha256(file("${data.archive_file.events.output_path}"))}"
+  source_code_hash = "${data.archive_file.events.output_base64sha256}"
   timeout          = "${var.events_lambda_timeout}"
 
   environment {
