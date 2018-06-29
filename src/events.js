@@ -31,7 +31,7 @@ function processEvent(event, callback) {
     const topic = `${sns_topic_prefix}:slack_event_${params.event.type}`;
     console.log(`TOPIC ${topic}`);
     SNS.publish({
-        Message: Buffer.from(JSON.stringify(payload)).toString('base64'),
+        Message: Buffer.from(JSON.stringify(params)).toString('base64'),
         TopicArn: topic
       }, (err, data) => {
         if (err) {
