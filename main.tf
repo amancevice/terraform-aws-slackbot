@@ -261,9 +261,6 @@ resource "aws_lambda_permission" "callbacks" {
   function_name = "${aws_lambda_function.callbacks.arn}"
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
-
-  # The /*/* portion grants access from any method on any resource
-  # within the API Gateway "REST API".
   source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.callbacks.path_part}"
 }
 
