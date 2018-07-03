@@ -2,6 +2,18 @@
 
 Slackbot endpoints backed by API Gateway + Lambda.
 
+## Architecture
+
+The archetecture for the Slackbot API is fairly straightforward. For both events and callbacks, payloads are routed to SNS. For events, they are routed by `event_type`, and for callbacks, `callback_id`.
+
+### Callbacks
+
+<img src="./docs/images/callbacks.png" width=500></img>
+
+### Events
+
+<img src="./docs/images/events.png" width=500></img>
+
 ## Quickstart
 
 The module is quite configurable, but a very basic setup will do the trick.
