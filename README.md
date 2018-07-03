@@ -8,11 +8,11 @@ The archetecture for the Slackbot API is fairly straightforward. For both events
 
 ### Callbacks
 
-<img src="./docs/images/callbacks.png" width=500></img>
+<img src="./docs/images/callbacks.png"></img>
 
 ### Events
 
-<img src="./docs/images/events.png" width=500></img>
+<img src="./docs/images/events.png"></img>
 
 ## Quickstart
 
