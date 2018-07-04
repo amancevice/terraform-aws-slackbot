@@ -126,14 +126,9 @@ variable "kms_key_usage" {
   default     = "ENCRYPT_DECRYPT"
 }
 
-variable "role_name" {
-  description = "Name of role for Slackbot Lambdas."
-  default     = ""
-}
-
 variable "role_path" {
   description = "Path for Slackbot role."
-  default     = "/service-role/"
+  default     = ""
 }
 
 variable "role_inline_policy_name" {

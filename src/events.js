@@ -6,7 +6,7 @@ const sns_topic_prefix = process.env.SNS_TOPIC_PREFIX;
 let verification_token;
 
 /**
- * Process Slack interactive event..
+ * Process Slack interactive event.
  *
  * @param {object} event AWS Lambda event.
  * @param {function} callback AWS Lambda callback function.
@@ -44,7 +44,7 @@ function processEvent(event, callback) {
 }
 
 /**
- * Responds to any HTTP request that can provide a "message" field in the body.
+ * Responds Slack event.
  *
  * @param {object} event AWS Lambda event.
  * @param {object} context AWS Lambda context.

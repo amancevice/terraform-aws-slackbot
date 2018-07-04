@@ -5,10 +5,9 @@ provider "archive" {
 locals {
   kms_key_alias                      = "${coalesce("${var.kms_key_alias}", "alias/${var.api_name}")}"
   log_arn_prefix                     = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
-  role_name                          = "${coalesce("${var.role_name}", "${var.api_name}-role")}"
-  role_inline_policy_name            = "${coalesce("${var.role_inline_policy_name}", "${local.role_name}-inline-policy")}"
-  sns_arn_prefix                     = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+  role_path                          = "${coalesce("${var.role_path}", "/${var.api_name}/")}"
   slack_verification_token_encrypted = "${element(coalescelist("${data.aws_kms_ciphertext.verification_token.*.ciphertext_blob}", list("${var.slack_verification_token}")), 0)}"
+  sns_arn_prefix                     = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
 }
 
 data "archive_file" "callbacks" {
@@ -48,33 +47,27 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
-data "aws_iam_policy_document" "inline" {
-  statement {
-    actions   = ["logs:CreateLogGroup"]
-    resources = ["*"]
-  }
-
-  statement {
-    actions   = [
-      "logs:CreateLogStream",
-      "logs:PutLogEvents"
-    ]
-    resources = [
-      "${local.log_arn_prefix}:log-group:/aws/lambda/${aws_lambda_function.events.function_name}:*",
-      "${local.log_arn_prefix}:log-group:/aws/lambda/${aws_lambda_function.callbacks.function_name}:*"
-    ]
-  }
-
+data "aws_iam_policy_document" "decrypt" {
   statement {
     actions   = ["kms:Decrypt"]
     resources = ["${aws_kms_key.slackbot.arn}"]
   }
+}
 
+data "aws_iam_policy_document" "publish_callbacks" {
   statement {
     actions   = ["sns:Publish"]
-    resources = ["${local.sns_arn_prefix}:*"]
+    resources = ["${local.sns_arn_prefix}:slack_callback_*"]
   }
 }
+
+data "aws_iam_policy_document" "publish_events" {
+  statement {
+    actions   = ["sns:Publish"]
+    resources = ["${local.sns_arn_prefix}:slack_event_*"]
+  }
+}
+
 
 data "aws_kms_ciphertext" "verification_token" {
   count     = "${var.auto_encrypt_token}"
@@ -184,16 +177,58 @@ resource "aws_api_gateway_rest_api" "api" {
   name        =  "${var.api_name}"
 }
 
-resource "aws_iam_role" "slackbot" {
-  assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
-  name               = "${local.role_name}"
-  path               = "${var.role_path}"
+resource "aws_iam_policy" "decrypt" {
+  name        = "${var.api_name}-decrypt"
+  path        = "${local.role_path}"
+  description = "Allow decryption for slackbot encryption key"
+  policy      = "${data.aws_iam_policy_document.decrypt.json}"
 }
 
-resource "aws_iam_role_policy" "slackbot" {
-  name   = "${local.role_inline_policy_name}"
-  role   = "${aws_iam_role.slackbot.id}"
-  policy = "${data.aws_iam_policy_document.inline.json}"
+resource "aws_iam_role" "callbacks" {
+  assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
+  description        = "Access logging, decryption, and publishing resources for Slackbot callbacks"
+  name               = "${var.api_name}-callbacks-role"
+  path               = "${local.role_path}"
+}
+
+resource "aws_iam_role" "events" {
+  assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
+  description        = "Access logging, decryption, and publishing resources for Slackbot events"
+  name               = "${var.api_name}-events-role"
+  path               = "${local.role_path}"
+}
+
+resource "aws_iam_role_policy" "callbacks" {
+  name   = "${aws_iam_role.callbacks.name}-inline-policy"
+  role   = "${aws_iam_role.callbacks.id}"
+  policy = "${data.aws_iam_policy_document.publish_callbacks.json}"
+}
+
+resource "aws_iam_role_policy" "events" {
+  name   = "${aws_iam_role.events.name}-inline-policy"
+  role   = "${aws_iam_role.events.id}"
+  policy = "${data.aws_iam_policy_document.publish_events.json}"
+}
+
+resource "aws_iam_role_policy_attachment" "callbacks_cloudwatch" {
+  role       = "${aws_iam_role.callbacks.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "events_cloudwatch" {
+  role       = "${aws_iam_role.events.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+
+resource "aws_iam_role_policy_attachment" "callbacks_decrypt" {
+  role       = "${aws_iam_role.callbacks.name}"
+  policy_arn = "${aws_iam_policy.decrypt.arn}"
+}
+
+resource "aws_iam_role_policy_attachment" "events_decrypt" {
+  role       = "${aws_iam_role.events.name}"
+  policy_arn = "${aws_iam_policy.decrypt.arn}"
 }
 
 resource "aws_kms_key" "slackbot" {
@@ -216,7 +251,7 @@ resource "aws_lambda_function" "callbacks" {
   function_name    = "${var.callbacks_lambda_function_name}"
   handler          = "callbacks.handler"
   memory_size      = "${var.callbacks_lambda_memory_size}"
-  role             = "${aws_iam_role.slackbot.arn}"
+  role             = "${aws_iam_role.callbacks.arn}"
   runtime          = "nodejs8.10"
   source_code_hash = "${data.archive_file.callbacks.output_base64sha256}"
   timeout          = "${var.callbacks_lambda_timeout}"
@@ -239,7 +274,7 @@ resource "aws_lambda_function" "events" {
   function_name    = "${var.events_lambda_function_name}"
   handler          = "events.handler"
   memory_size      = "${var.events_lambda_memory_size}"
-  role             = "${aws_iam_role.slackbot.arn}"
+  role             = "${aws_iam_role.events.arn}"
   runtime          = "nodejs8.10"
   source_code_hash = "${data.archive_file.events.output_base64sha256}"
   timeout          = "${var.events_lambda_timeout}"

@@ -25,7 +25,12 @@ output "callback_topic_arns" {
 
 output "callbacks_request_url" {
   description = "Callbacks Request URL."
-  value        = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.callbacks.path_part}"
+  value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.callbacks.path_part}"
+}
+
+output "decrypt_policy_arn" {
+  description = "Slackbot KMS key decryption permission policy ARN."
+  value       = "${aws_iam_policy.decrypt.arn}"
 }
 
 output "event_resource_ids" {
