@@ -131,11 +131,6 @@ variable "role_path" {
   default     = ""
 }
 
-variable "role_inline_policy_name" {
-  description = "Name of inline Slackbot role policy."
-  default     = ""
-}
-
 variable "slack_verification_token" {
   description = "Slack verification token."
   default     = "<kms-encrypted-slack-verification-token>"
