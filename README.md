@@ -19,11 +19,11 @@ The archetecture for the Slackbot API is fairly straightforward. For both events
 The module is quite configurable, but a very basic setup will do the trick.
 
 ```terraform
-module "socialismbot" {
-  source                   = "amancevice/slackbot/aws"
-  api_name                 = "my-slackbot"
-  slack_verification_token = "<verification-token>"
-  # auto_encrypt_token       = false
+module "slackbot" {
+  source                 = "amancevice/slackbot/aws"
+  slack_access_token     = "${var.slack_access_token}"
+  slack_bot_access_token = "${var.slack_bot_access_token}"
+  slack_signing_secret   = "${var.slack_signing_secret}"
 
   callback_ids = [
     # ...
@@ -34,8 +34,6 @@ module "socialismbot" {
   ]
 }
 ```
-
-It's important your verification token is kept secret, so the module will encrypt it for you unless you specifically tell it not to. Once it's encrypted you may replace the raw token with the encrypted one and set `auto_encrypt_token = false`.
 
 This will create an API with the following endpoints to be configured in Slack:
 
