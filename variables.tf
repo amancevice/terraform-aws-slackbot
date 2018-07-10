@@ -13,6 +13,15 @@ variable "api_stage_name" {
   default     = "v1"
 }
 
+variable "api_endpoint_configuration" {
+  description = "Slackbot API endpoint type."
+  type        = "map"
+
+  default {
+    types = ["EDGE"]
+  }
+}
+
 variable "auto_encrypt_token" {
   description = "Flag to automatically encrypt token."
   default     = true
@@ -50,7 +59,7 @@ variable "callbacks_lambda_tags" {
 
 variable "callbacks_lambda_timeout" {
   description = "Timeout in seconds for Lambda function."
-  default     = 3
+  default     = 10
 }
 
 variable "event_types" {
@@ -85,7 +94,7 @@ variable "events_lambda_tags" {
 
 variable "events_lambda_timeout" {
   description = "Timeout in seconds for Lambda function."
-  default     = 3
+  default     = 10
 }
 
 variable "kms_key_alias" {
@@ -131,7 +140,44 @@ variable "role_path" {
   default     = ""
 }
 
-variable "slack_verification_token" {
-  description = "Slack verification token."
-  default     = "<kms-encrypted-slack-verification-token>"
+variable "secret_name" {
+  description = "Name of secret."
+  default     = ""
+}
+
+variable "secret_recovery_window_in_days" {
+  description = "Recovery window for secret."
+  default     = 30
+}
+
+variable "secret_rotation_lambda_arn" {
+  description = "ARN of Lambda with permission to rotate permission."
+  default     = ""
+}
+
+variable "secret_rotation_rules" {
+  description = "Rotation configuration for secret."
+  type        = "list"
+  default     = []
+}
+
+variable "secret_tags" {
+  description = "Secret tags"
+  type        = "map"
+
+  default {
+    deployment-tool = "terraform"
+  }
+}
+
+variable "slack_access_token" {
+  description = "Slack OAuth access token."
+}
+
+variable "slack_bot_access_token" {
+  description = "Slack OAuth bot access token."
+}
+
+variable "slack_signing_secret" {
+  description = "Slack signing secret."
 }

@@ -3,11 +3,17 @@ provider "archive" {
 }
 
 locals {
-  kms_key_alias                      = "${coalesce("${var.kms_key_alias}", "alias/${var.api_name}")}"
-  log_arn_prefix                     = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
-  role_path                          = "${coalesce("${var.role_path}", "/${var.api_name}/")}"
-  slack_verification_token_encrypted = "${element(coalescelist("${data.aws_kms_ciphertext.verification_token.*.ciphertext_blob}", list("${var.slack_verification_token}")), 0)}"
-  sns_arn_prefix                     = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+  kms_key_alias  = "${coalesce("${var.kms_key_alias}", "alias/${var.api_name}")}"
+  log_arn_prefix = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+  role_path      = "${coalesce("${var.role_path}", "/${var.api_name}/")}"
+  secret_name    = "${coalesce("${var.secret_name}", "${var.api_name}")}"
+  sns_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+
+  secrets {
+    SIGNING_SECRET   = "${var.slack_signing_secret}"
+    ACCESS_TOKEN     = "${var.slack_access_token}"
+    BOT_ACCESS_TOKEN = "${var.slack_bot_access_token}"
+  }
 }
 
 data "archive_file" "callbacks" {
@@ -15,8 +21,8 @@ data "archive_file" "callbacks" {
   output_path = "${path.module}/dist/callbacks.zip"
 
   source {
-    content  = "${file("${path.module}/src/callbacks.js")}"
-    filename = "callbacks.js"
+    content  = "${file("${path.module}/src/index.js")}"
+    filename = "index.js"
   }
 }
 
@@ -25,8 +31,8 @@ data "archive_file" "events" {
   output_path = "${path.module}/dist/events.zip"
 
   source {
-    content  = "${file("${path.module}/src/events.js")}"
-    filename = "events.js"
+    content  = "${file("${path.module}/src/index.js")}"
+    filename = "index.js"
   }
 }
 
@@ -47,10 +53,16 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
-data "aws_iam_policy_document" "decrypt" {
+data "aws_iam_policy_document" "secrets" {
   statement {
-    actions   = ["kms:Decrypt"]
-    resources = ["${aws_kms_key.slackbot.arn}"]
+    actions   = [
+      "kms:Decrypt",
+      "secretsmanager:GetSecretValue"
+    ]
+    resources = [
+      "${aws_kms_key.slackbot.arn}",
+      "${aws_secretsmanager_secret.slackbot.arn}"
+    ]
   }
 }
 
@@ -66,13 +78,6 @@ data "aws_iam_policy_document" "publish_events" {
     actions   = ["sns:Publish"]
     resources = ["${local.sns_arn_prefix}:slack_event_*"]
   }
-}
-
-
-data "aws_kms_ciphertext" "verification_token" {
-  count     = "${var.auto_encrypt_token}"
-  key_id    = "${aws_kms_key.slackbot.key_id}"
-  plaintext = "${var.slack_verification_token}"
 }
 
 resource "aws_api_gateway_deployment" "api" {
@@ -173,15 +178,16 @@ resource "aws_api_gateway_resource" "slash_commands" {
 }
 
 resource "aws_api_gateway_rest_api" "api" {
-  description =  "${var.api_description}"
-  name        =  "${var.api_name}"
+  description            = "${var.api_description}"
+  name                   = "${var.api_name}"
+  endpoint_configuration = ["${var.api_endpoint_configuration}"]
 }
 
-resource "aws_iam_policy" "decrypt" {
-  name        = "${var.api_name}-decrypt"
+resource "aws_iam_policy" "secrets" {
+  name        = "${var.api_name}-secrets"
   path        = "${local.role_path}"
-  description = "Allow decryption for slackbot encryption key"
-  policy      = "${data.aws_iam_policy_document.decrypt.json}"
+  description = "Access SecretsManager secret"
+  policy      = "${data.aws_iam_policy_document.secrets.json}"
 }
 
 resource "aws_iam_role" "callbacks" {
@@ -220,15 +226,14 @@ resource "aws_iam_role_policy_attachment" "events_cloudwatch" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-
-resource "aws_iam_role_policy_attachment" "callbacks_decrypt" {
+resource "aws_iam_role_policy_attachment" "callbacks_secrets" {
   role       = "${aws_iam_role.callbacks.name}"
-  policy_arn = "${aws_iam_policy.decrypt.arn}"
+  policy_arn = "${aws_iam_policy.secrets.arn}"
 }
 
-resource "aws_iam_role_policy_attachment" "events_decrypt" {
+resource "aws_iam_role_policy_attachment" "events_secrets" {
   role       = "${aws_iam_role.events.name}"
-  policy_arn = "${aws_iam_policy.decrypt.arn}"
+  policy_arn = "${aws_iam_policy.secrets.arn}"
 }
 
 resource "aws_kms_key" "slackbot" {
@@ -249,7 +254,7 @@ resource "aws_lambda_function" "callbacks" {
   description      = "${var.callbacks_lambda_description}"
   filename         = "${data.archive_file.callbacks.output_path}"
   function_name    = "${var.callbacks_lambda_function_name}"
-  handler          = "callbacks.handler"
+  handler          = "index.callbacks"
   memory_size      = "${var.callbacks_lambda_memory_size}"
   role             = "${aws_iam_role.callbacks.arn}"
   runtime          = "nodejs8.10"
@@ -258,8 +263,8 @@ resource "aws_lambda_function" "callbacks" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${local.slack_verification_token_encrypted}"
-      SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
+      SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
+      SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_callback_"
     }
   }
 
@@ -272,7 +277,7 @@ resource "aws_lambda_function" "events" {
   description      = "${var.events_lambda_description}"
   filename         = "${data.archive_file.events.output_path}"
   function_name    = "${var.events_lambda_function_name}"
-  handler          = "events.handler"
+  handler          = "index.events"
   memory_size      = "${var.events_lambda_memory_size}"
   role             = "${aws_iam_role.events.arn}"
   runtime          = "nodejs8.10"
@@ -281,8 +286,8 @@ resource "aws_lambda_function" "events" {
 
   environment {
     variables = {
-      ENCRYPTED_VERIFICATION_TOKEN = "${local.slack_verification_token_encrypted}"
-      SNS_TOPIC_PREFIX             = "${local.sns_arn_prefix}"
+      SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
+      SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_event_"
     }
   }
 
@@ -305,6 +310,21 @@ resource "aws_lambda_permission" "events" {
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
   source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.events.path_part}"
+}
+
+resource "aws_secretsmanager_secret" "slackbot" {
+  description             = "Slackbot access tokens."
+  kms_key_id              = "${aws_kms_key.slackbot.key_id}"
+  name                    = "${local.secret_name}"
+  recovery_window_in_days = "${var.secret_recovery_window_in_days}"
+  rotation_lambda_arn     = "${var.secret_rotation_lambda_arn}"
+  rotation_rules          = "${var.secret_rotation_rules}"
+  tags                    = "${var.secret_tags}"
+}
+
+resource "aws_secretsmanager_secret_version" "secrets" {
+  secret_id     = "${aws_secretsmanager_secret.slackbot.id}"
+  secret_string = "${jsonencode("${local.secrets}")}"
 }
 
 resource "aws_sns_topic" "callback_ids" {

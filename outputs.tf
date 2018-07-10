@@ -28,11 +28,6 @@ output "callbacks_request_url" {
   value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.callbacks.path_part}"
 }
 
-output "decrypt_policy_arn" {
-  description = "Slackbot KMS key decryption permission policy ARN."
-  value       = "${aws_iam_policy.decrypt.arn}"
-}
-
 output "event_resource_ids" {
   description = "API Gateway Resource IDs for Slack events."
   value       = "${zipmap("${var.event_types}", "${aws_api_gateway_resource.event.*.id}")}"
@@ -51,6 +46,16 @@ output "events_request_url" {
 output "kms_key_id" {
   description = "KMS Key ID."
   value       = "${aws_kms_key.slackbot.key_id}"
+}
+
+output "secret" {
+  description = "Slackbot SecretsManager secret name."
+  value       = "${aws_secretsmanager_secret.slackbot.name}"
+}
+
+output "secrets_policy_arn" {
+  description = "Slackbot KMS key decryption permission policy ARN."
+  value       = "${aws_iam_policy.secrets.arn}"
 }
 
 output "slash_commands_request_url" {
