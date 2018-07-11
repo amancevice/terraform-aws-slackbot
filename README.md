@@ -40,7 +40,7 @@ This will create an API with the following endpoints to be configured in Slack:
 - `/v1/callbacks` The request URL for interactive components
 - `/v1/events` The request URL for Slack events
 
-For every callback you plan on making (these are all custom values), add the callback ID to the `callback_id` list.
+For every callback you plan on making (these are all custom values), add the callback ID to the `callback_ids` list.
 
 Similarly, for every event you wish to listen for, add the [event type](https://api.slack.com/events) to the `event_types` list.
 
