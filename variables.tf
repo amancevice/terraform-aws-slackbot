@@ -22,11 +22,6 @@ variable "api_endpoint_configuration" {
   }
 }
 
-variable "auto_encrypt_token" {
-  description = "Flag to automatically encrypt token."
-  default     = true
-}
-
 variable "callback_ids" {
   description = "List of Slack callback IDs."
   type        = "list"
