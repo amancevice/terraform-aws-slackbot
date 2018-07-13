@@ -436,7 +436,7 @@ resource "aws_lambda_function" "callbacks" {
   timeout          = "${var.callbacks_lambda_timeout}"
 
   environment {
-    variables = {
+    variables {
       SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
       SIGNING_VERSION  = "${var.slack_signing_version}"
       SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_callback_"
@@ -460,7 +460,7 @@ resource "aws_lambda_function" "events" {
   timeout          = "${var.events_lambda_timeout}"
 
   environment {
-    variables = {
+    variables {
       SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
       SIGNING_VERSION  = "${var.slack_signing_version}"
       SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_event_"
