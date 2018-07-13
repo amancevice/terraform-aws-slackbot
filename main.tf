@@ -7,6 +7,7 @@ locals {
   role_path      = "${coalesce("${var.role_path}", "/${var.api_name}/")}"
   secret_name    = "${coalesce("${var.secret_name}", "${var.api_name}")}"
   sns_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+  lambda_policy  = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 
   callback {
     "$schema" = "http://json-schema.org/draft-04/schema#"
@@ -327,6 +328,20 @@ resource "aws_api_gateway_rest_api" "api" {
   endpoint_configuration = ["${var.api_endpoint_configuration}"]
 }
 
+resource "aws_iam_policy" "callbacks" {
+  name        = "${var.api_name}-publish-callbacks"
+  path        = "${local.role_path}"
+  description = "Publish to callbacks SNS topic"
+  policy      = "${data.aws_iam_policy_document.publish_callbacks.json}"
+}
+
+resource "aws_iam_policy" "events" {
+  name        = "${var.api_name}-publish-events"
+  path        = "${local.role_path}"
+  description = "Publish to events SNS topic"
+  policy      = "${data.aws_iam_policy_document.publish_events.json}"
+}
+
 resource "aws_iam_policy" "secrets" {
   name        = "${var.api_name}-secrets"
   path        = "${local.role_path}"
@@ -334,45 +349,60 @@ resource "aws_iam_policy" "secrets" {
   policy      = "${data.aws_iam_policy_document.secrets.json}"
 }
 
+resource "aws_iam_role" "api" {
+  assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
+  description        = "Access logging and decryption resources for Slackbot"
+  name               = "slack-${var.api_name}-role"
+  path               = "${local.role_path}"
+}
+
 resource "aws_iam_role" "callbacks" {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
   description        = "Access logging, decryption, and publishing resources for Slackbot callbacks"
-  name               = "${var.api_name}-callbacks-role"
+  name               = "slack-${var.api_name}-callbacks-role"
   path               = "${local.role_path}"
 }
 
 resource "aws_iam_role" "events" {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
   description        = "Access logging, decryption, and publishing resources for Slackbot events"
-  name               = "${var.api_name}-events-role"
+  name               = "slack-${var.api_name}-events-role"
   path               = "${local.role_path}"
 }
 
-resource "aws_iam_role_policy" "callbacks" {
-  name   = "${aws_iam_role.callbacks.name}-inline-policy"
-  role   = "${aws_iam_role.callbacks.id}"
-  policy = "${data.aws_iam_policy_document.publish_callbacks.json}"
+resource "aws_iam_role_policy_attachment" "api_cloudwatch" {
+  role       = "${aws_iam_role.api.name}"
+  policy_arn = "${local.lambda_policy}"
 }
 
-resource "aws_iam_role_policy" "events" {
-  name   = "${aws_iam_role.events.name}-inline-policy"
-  role   = "${aws_iam_role.events.id}"
-  policy = "${data.aws_iam_policy_document.publish_events.json}"
+resource "aws_iam_role_policy_attachment" "api_secrets" {
+  role       = "${aws_iam_role.api.name}"
+  policy_arn = "${aws_iam_policy.secrets.arn}"
+}
+
+resource "aws_iam_role_policy_attachment" "callbacks" {
+  role       = "${aws_iam_role.callbacks.name}"
+  policy_arn = "${aws_iam_policy.callbacks.arn}"
 }
 
 resource "aws_iam_role_policy_attachment" "callbacks_cloudwatch" {
   role       = "${aws_iam_role.callbacks.name}"
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy_attachment" "events_cloudwatch" {
-  role       = "${aws_iam_role.events.name}"
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  policy_arn = "${local.lambda_policy}"
 }
 
 resource "aws_iam_role_policy_attachment" "callbacks_secrets" {
   role       = "${aws_iam_role.callbacks.name}"
   policy_arn = "${aws_iam_policy.secrets.arn}"
+}
+
+resource "aws_iam_role_policy_attachment" "events" {
+  role       = "${aws_iam_role.events.name}"
+  policy_arn = "${aws_iam_policy.events.arn}"
+}
+
+resource "aws_iam_role_policy_attachment" "events_cloudwatch" {
+  role       = "${aws_iam_role.events.name}"
+  policy_arn = "${local.lambda_policy}"
 }
 
 resource "aws_iam_role_policy_attachment" "events_secrets" {
