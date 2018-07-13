@@ -1,1 +1,3 @@
-slackbot_verification_token = "myVerificationToken"
+slack_access_token     = "<slack-access-token>"
+slack_bot_access_token = "<slack-bot-access-token>"
+slack_signing_secret   = "<slack-signing-secret>"
