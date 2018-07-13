@@ -8,6 +8,107 @@ locals {
   secret_name    = "${coalesce("${var.secret_name}", "${var.api_name}")}"
   sns_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
 
+  callback {
+    "$schema" = "http://json-schema.org/draft-04/schema#"
+    type      = "object"
+
+    properties {
+      payload {
+        type = "string"
+      }
+    }
+  }
+
+  challenge {
+    "$schema" = "http://json-schema.org/draft-04/schema#"
+    type      = "object"
+
+    properties {
+      challenge {
+        type = "string"
+      }
+    }
+  }
+
+  event {
+    "$schema" = "http://json-schema.org/draft-04/schema#"
+    type      = "object"
+
+    properties {
+      api_app_id {
+        type = "string"
+      }
+
+      authed_users {
+        type = "array"
+
+        items {
+          type = "string"
+        }
+      }
+
+      event_id {
+        type = "string"
+      }
+
+      team_id {
+        type = "string"
+      }
+
+      token {
+        type = "string"
+      }
+
+      type {
+        type = "string"
+      }
+
+      event_time {
+        type = "number"
+      }
+
+      event {
+        type = "object"
+
+        properties {
+          channel {
+            type = "object"
+
+            properties {
+              id {
+                type = "string"
+              }
+
+              name {
+                type = "string"
+              }
+
+              name_normalized {
+                type = "string"
+              }
+
+              is_group {
+                type = "boolean"
+              }
+
+              created {
+                type = "number"
+              }
+
+            }
+          }
+          event_ts {
+            type = "string"
+          }
+
+          type {
+            type = "string"
+          }
+        }
+      }
+    }
+  }
+
   secrets {
     SIGNING_SECRET   = "${var.slack_signing_secret}"
     ACCESS_TOKEN     = "${var.slack_access_token}"
@@ -113,6 +214,15 @@ resource "aws_api_gateway_method" "callbacks_post" {
   http_method   = "POST"
   resource_id   = "${aws_api_gateway_resource.callbacks.id}"
   rest_api_id   = "${aws_api_gateway_rest_api.api.id}"
+
+  request_models {
+    "application/json" = "Callback"
+  }
+
+  request_parameters {
+    "method.request.header.X-Slack-Request-Timestamp" = 1
+    "method.request.header.X-Slack-Signature"         = 1
+  }
 }
 
 resource "aws_api_gateway_method" "events_post" {
@@ -120,6 +230,15 @@ resource "aws_api_gateway_method" "events_post" {
   http_method   = "POST"
   resource_id   = "${aws_api_gateway_resource.events.id}"
   rest_api_id   = "${aws_api_gateway_rest_api.api.id}"
+
+  request_models {
+    "application/json" = "Event"
+  }
+
+  request_parameters {
+    "method.request.header.X-Slack-Request-Timestamp" = 1
+    "method.request.header.X-Slack-Signature"         = 1
+  }
 }
 
 resource "aws_api_gateway_method_response" "callbacks_200" {
@@ -134,6 +253,7 @@ resource "aws_api_gateway_method_response" "callbacks_200" {
 }
 
 resource "aws_api_gateway_method_response" "events_200" {
+  depends_on  = ["aws_api_gateway_model.challenge"]
   http_method = "${aws_api_gateway_method.events_post.http_method}"
   resource_id = "${aws_api_gateway_method.events_post.resource_id}"
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
@@ -141,7 +261,32 @@ resource "aws_api_gateway_method_response" "events_200" {
 
   response_models {
     "application/json" = "Empty"
+    "application/json" = "Challenge"
   }
+}
+
+resource "aws_api_gateway_model" "callback" {
+  content_type = "application/json"
+  description  = "Slack callback request"
+  name         = "Callback"
+  rest_api_id  = "${aws_api_gateway_rest_api.api.id}"
+  schema       = "${jsonencode("${local.callback}")}"
+}
+
+resource "aws_api_gateway_model" "challenge" {
+  content_type = "application/json"
+  description  = "Slack Event API challenge response"
+  name         = "Challenge"
+  rest_api_id  = "${aws_api_gateway_rest_api.api.id}"
+  schema       = "${jsonencode("${local.challenge}")}"
+}
+
+resource "aws_api_gateway_model" "event" {
+  content_type = "application/json"
+  description  = "Slack event request"
+  name         = "Event"
+  rest_api_id  = "${aws_api_gateway_rest_api.api.id}"
+  schema       = "${jsonencode("${local.event}")}"
 }
 
 resource "aws_api_gateway_resource" "callback" {
@@ -263,6 +408,7 @@ resource "aws_lambda_function" "callbacks" {
   environment {
     variables = {
       SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
+      SIGNING_VERSION  = "${var.slack_signing_version}"
       SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_callback_"
     }
   }
@@ -286,6 +432,7 @@ resource "aws_lambda_function" "events" {
   environment {
     variables = {
       SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
+      SIGNING_VERSION  = "${var.slack_signing_version}"
       SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_event_"
     }
   }
@@ -300,7 +447,7 @@ resource "aws_lambda_permission" "callbacks" {
   function_name = "${aws_lambda_function.callbacks.arn}"
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
-  source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.callbacks.path_part}"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/${aws_api_gateway_method.callbacks_post.http_method}/${aws_api_gateway_resource.callbacks.path_part}"
 }
 
 resource "aws_lambda_permission" "events" {
@@ -308,7 +455,7 @@ resource "aws_lambda_permission" "events" {
   function_name = "${aws_lambda_function.events.arn}"
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
-  source_arn    = "${aws_api_gateway_deployment.api.execution_arn}/POST/${aws_api_gateway_resource.events.path_part}"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/${aws_api_gateway_method.events_post.http_method}/${aws_api_gateway_resource.events.path_part}"
 }
 
 resource "aws_secretsmanager_secret" "slackbot" {

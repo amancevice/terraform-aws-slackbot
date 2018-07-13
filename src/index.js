@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const secret = process.env.SECRET;
-const signing_version = 'v0';
+const signing_version = process.env.SIGNING_VERSION;
 const sns_topic_prefix = process.env.SNS_TOPIC_PREFIX;
 
 let signing_secret;
@@ -64,7 +64,7 @@ function processCallback(body) {
     const params = qs.parse(body);
     return JSON.parse(params.payload);
   }).then((res) => {
-    return publishPayload(res);
+    return publishPayload(res, res.callback_id);
   });
 }
 
@@ -82,7 +82,7 @@ function processEvent(body) {
       console.log(`CHALLENGE ${JSON.stringify(challenge)}`);
       return challenge;
     } else {
-      return publishPayload(res);
+      return publishPayload(res, res.event.type);
     }
   });
 }
@@ -92,12 +92,12 @@ function processEvent(body) {
  *
  * @param {object} payload Slack payload.
  */
-function publishPayload(payload) {
+function publishPayload(payload, sns_topic_suffix) {
   return new Promise((resolve, reject) => {
     console.log(`PAYLOAD ${JSON.stringify(payload)}`);
     const AWS = require('aws-sdk');
     const SNS = new AWS.SNS();
-    const topic = `${sns_topic_prefix}${payload.callback_id}`;
+    const topic = `${sns_topic_prefix}${sns_topic_suffix}`;
     console.log(`TOPIC ${topic}`);
     SNS.publish({
       Message: Buffer.from(JSON.stringify(payload)).toString('base64'),

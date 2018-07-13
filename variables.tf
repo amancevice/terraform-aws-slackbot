@@ -40,7 +40,7 @@ variable "callbacks_lambda_function_name" {
 
 variable "callbacks_lambda_memory_size" {
   description = "Memory for Lambda function."
-  default     = 128
+  default     = 512
 }
 
 variable "callbacks_lambda_tags" {
@@ -54,7 +54,7 @@ variable "callbacks_lambda_tags" {
 
 variable "callbacks_lambda_timeout" {
   description = "Timeout in seconds for Lambda function."
-  default     = 10
+  default     = 3
 }
 
 variable "event_types" {
@@ -75,7 +75,7 @@ variable "events_lambda_function_name" {
 
 variable "events_lambda_memory_size" {
   description = "Memory for Lambda function."
-  default     = 128
+  default     = 512
 }
 
 variable "events_lambda_tags" {
@@ -89,7 +89,7 @@ variable "events_lambda_tags" {
 
 variable "events_lambda_timeout" {
   description = "Timeout in seconds for Lambda function."
-  default     = 10
+  default     = 3
 }
 
 variable "kms_key_alias" {
@@ -175,4 +175,9 @@ variable "slack_bot_access_token" {
 
 variable "slack_signing_secret" {
   description = "Slack signing secret."
+}
+
+variable "slack_signing_version" {
+  description = "Slack signing version."
+  default     = "v0"
 }
