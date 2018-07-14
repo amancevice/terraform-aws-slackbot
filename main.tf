@@ -3,11 +3,13 @@ provider "archive" {
 }
 
 locals {
-  kms_key_alias  = "${coalesce("${var.kms_key_alias}", "alias/${var.api_name}")}"
-  role_path      = "${coalesce("${var.role_path}", "/${var.api_name}/")}"
-  secret_name    = "${coalesce("${var.secret_name}", "${var.api_name}")}"
-  sns_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
-  lambda_policy  = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  callbacks_function_name = "${coalesce("${var.callbacks_lambda_function_name}", "slack-${var.api_name}-callbacks")}"
+  events_function_name    = "${coalesce("${var.events_lambda_function_name}", "slack-${var.api_name}-events")}"
+  kms_key_alias           = "${coalesce("${var.kms_key_alias}", "alias/${var.api_name}")}"
+  lambda_policy           = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role_path               = "${coalesce("${var.role_path}", "/${var.api_name}/")}"
+  secret_name             = "${coalesce("${var.secret_name}", "${var.api_name}")}"
+  sns_arn_prefix          = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
 
   callback {
     "$schema" = "http://json-schema.org/draft-04/schema#"
@@ -427,7 +429,7 @@ resource "aws_kms_alias" "slackbot" {
 resource "aws_lambda_function" "callbacks" {
   description      = "${var.callbacks_lambda_description}"
   filename         = "${data.archive_file.callbacks.output_path}"
-  function_name    = "${var.callbacks_lambda_function_name}"
+  function_name    = "${local.callbacks_function_name}"
   handler          = "index.callbacks"
   memory_size      = "${var.callbacks_lambda_memory_size}"
   role             = "${aws_iam_role.callbacks.arn}"
@@ -451,7 +453,7 @@ resource "aws_lambda_function" "callbacks" {
 resource "aws_lambda_function" "events" {
   description      = "${var.events_lambda_description}"
   filename         = "${data.archive_file.events.output_path}"
-  function_name    = "${var.events_lambda_function_name}"
+  function_name    = "${local.events_function_name}"
   handler          = "index.events"
   memory_size      = "${var.events_lambda_memory_size}"
   role             = "${aws_iam_role.events.arn}"

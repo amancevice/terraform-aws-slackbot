@@ -35,7 +35,7 @@ variable "callbacks_lambda_description" {
 
 variable "callbacks_lambda_function_name" {
   description = "Lambda Function for publishing events from Slack to SNS."
-  default     = "slack-callbacks"
+  default     = ""
 }
 
 variable "callbacks_lambda_memory_size" {
@@ -70,7 +70,7 @@ variable "events_lambda_description" {
 
 variable "events_lambda_function_name" {
   description = "Lambda Function for publishing events from Slack to SNS."
-  default     = "slack-events"
+  default     = ""
 }
 
 variable "events_lambda_memory_size" {
