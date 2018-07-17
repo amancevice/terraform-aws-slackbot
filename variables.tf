@@ -165,10 +165,6 @@ variable "secret_tags" {
   }
 }
 
-variable "slack_user_access_token" {
-  description = "Slack OAuth user access token."
-}
-
 variable "slack_bot_access_token" {
   description = "Slack OAuth bot access token."
 }
@@ -180,4 +176,8 @@ variable "slack_signing_secret" {
 variable "slack_signing_version" {
   description = "Slack signing version."
   default     = "v0"
+}
+
+variable "slack_user_access_token" {
+  description = "Slack OAuth user access token."
 }
