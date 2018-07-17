@@ -113,9 +113,9 @@ locals {
   }
 
   secrets {
-    SIGNING_SECRET   = "${var.slack_signing_secret}"
-    ACCESS_TOKEN     = "${var.slack_access_token}"
-    BOT_ACCESS_TOKEN = "${var.slack_bot_access_token}"
+    SIGNING_SECRET    = "${var.slack_signing_secret}"
+    USER_ACCESS_TOKEN = "${var.slack_user_access_token}"
+    BOT_ACCESS_TOKEN  = "${var.slack_bot_access_token}"
   }
 }
 
