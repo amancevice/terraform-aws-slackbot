@@ -8,11 +8,11 @@ The archetecture for the Slackbot API is fairly straightforward. For both events
 
 ### Callbacks
 
-<img src="./docs/images/callbacks.png"></img>
+<img src="https://github.com/amancevice/terraform-aws-slackbot/blob/master/docs/images/callbacks.png?raw=true"></img>
 
 ### Events
 
-<img src="./docs/images/events.png"></img>
+<img src="https://github.com/amancevice/terraform-aws-slackbot/blob/master/docs/images/events.png?raw=true"></img>
 
 ## Quickstart
 
