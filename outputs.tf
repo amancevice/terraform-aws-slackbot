@@ -63,7 +63,7 @@ output "slackbot_role_arn" {
   value       = "${aws_iam_role.api.arn}"
 }
 
-output "slackbot_role_name" {
+output "slackbot_role" {
   description = "Name of basic execution role for Slackbot lambdas."
   value       = "${aws_iam_role.api.name}"
 }
