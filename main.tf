@@ -332,21 +332,21 @@ resource "aws_api_gateway_rest_api" "api" {
 }
 
 resource "aws_iam_policy" "callbacks" {
-  name        = "${var.api_name}-publish-callbacks"
+  name        = "slack-${var.api_name}-publish-callbacks"
   path        = "${local.role_path}"
   description = "Publish to callbacks SNS topic"
   policy      = "${data.aws_iam_policy_document.publish_callbacks.json}"
 }
 
 resource "aws_iam_policy" "events" {
-  name        = "${var.api_name}-publish-events"
+  name        = "slack-${var.api_name}-publish-events"
   path        = "${local.role_path}"
   description = "Publish to events SNS topic"
   policy      = "${data.aws_iam_policy_document.publish_events.json}"
 }
 
 resource "aws_iam_policy" "secrets" {
-  name        = "${var.api_name}-secrets"
+  name        = "slack-${var.api_name}-secrets"
   path        = "${local.role_path}"
   description = "Access SecretsManager secret"
   policy      = "${data.aws_iam_policy_document.secrets.json}"
