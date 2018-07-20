@@ -63,6 +63,11 @@ output "slackbot_role_arn" {
   value       = "${aws_iam_role.api.arn}"
 }
 
+output "slackbot_role_name" {
+  description = "Name of basic execution role for Slackbot lambdas."
+  value       = "${aws_iam_role.api.name}"
+}
+
 output "slash_commands_request_url" {
   description = "Slash commands base URL."
   value       = "${aws_api_gateway_deployment.api.invoke_url}/slash-commands"
