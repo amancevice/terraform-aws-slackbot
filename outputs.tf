@@ -58,14 +58,9 @@ output "secrets_policy_arn" {
   value       = "${aws_iam_policy.secrets.arn}"
 }
 
-output "slackbot_role_arn" {
-  description = "ARN of basic execution role for Slackbot lambdas."
-  value       = "${aws_iam_role.api.arn}"
-}
-
-output "slackbot_role" {
+output "role" {
   description = "Name of basic execution role for Slackbot lambdas."
-  value       = "${aws_iam_role.api.name}"
+  value       = "${aws_iam_role.slackbot.name}"
 }
 
 output "slash_commands_request_url" {

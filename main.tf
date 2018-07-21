@@ -334,83 +334,49 @@ resource "aws_api_gateway_rest_api" "api" {
 resource "aws_iam_policy" "callbacks" {
   name        = "slack-${var.api_name}-publish-callbacks"
   path        = "${local.role_path}"
-  description = "Publish to callbacks SNS topic"
+  description = "Publish Slackbot callbacks"
   policy      = "${data.aws_iam_policy_document.publish_callbacks.json}"
 }
 
 resource "aws_iam_policy" "events" {
   name        = "slack-${var.api_name}-publish-events"
   path        = "${local.role_path}"
-  description = "Publish to events SNS topic"
+  description = "Publish Slackbot events"
   policy      = "${data.aws_iam_policy_document.publish_events.json}"
 }
 
 resource "aws_iam_policy" "secrets" {
-  name        = "slack-${var.api_name}-secrets"
+  name        = "slack-${var.api_name}-decrypt-secrets"
   path        = "${local.role_path}"
-  description = "Access SecretsManager secret"
+  description = "Decrypt Slackbot SecretsManager secret"
   policy      = "${data.aws_iam_policy_document.secrets.json}"
 }
 
-resource "aws_iam_role" "api" {
+resource "aws_iam_role" "slackbot" {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
-  description        = "Access logging and decryption resources for Slackbot"
+  description        = "Slackbot resource access"
   name               = "slack-${var.api_name}-role"
   path               = "${local.role_path}"
 }
 
-resource "aws_iam_role" "callbacks" {
-  assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
-  description        = "Access logging, decryption, and publishing resources for Slackbot callbacks"
-  name               = "slack-${var.api_name}-callbacks-role"
-  path               = "${local.role_path}"
-}
-
-resource "aws_iam_role" "events" {
-  assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
-  description        = "Access logging, decryption, and publishing resources for Slackbot events"
-  name               = "slack-${var.api_name}-events-role"
-  path               = "${local.role_path}"
-}
-
-resource "aws_iam_role_policy_attachment" "api_cloudwatch" {
-  role       = "${aws_iam_role.api.name}"
+resource "aws_iam_role_policy_attachment" "cloudwatch" {
+  role       = "${aws_iam_role.slackbot.name}"
   policy_arn = "${local.lambda_policy}"
 }
 
-resource "aws_iam_role_policy_attachment" "api_secrets" {
-  role       = "${aws_iam_role.api.name}"
+resource "aws_iam_role_policy_attachment" "secrets" {
+  role       = "${aws_iam_role.slackbot.name}"
   policy_arn = "${aws_iam_policy.secrets.arn}"
 }
 
 resource "aws_iam_role_policy_attachment" "callbacks" {
-  role       = "${aws_iam_role.callbacks.name}"
+  role       = "${aws_iam_role.slackbot.name}"
   policy_arn = "${aws_iam_policy.callbacks.arn}"
 }
 
-resource "aws_iam_role_policy_attachment" "callbacks_cloudwatch" {
-  role       = "${aws_iam_role.callbacks.name}"
-  policy_arn = "${local.lambda_policy}"
-}
-
-resource "aws_iam_role_policy_attachment" "callbacks_secrets" {
-  role       = "${aws_iam_role.callbacks.name}"
-  policy_arn = "${aws_iam_policy.secrets.arn}"
-}
-
 resource "aws_iam_role_policy_attachment" "events" {
-  role       = "${aws_iam_role.events.name}"
+  role       = "${aws_iam_role.slackbot.name}"
   policy_arn = "${aws_iam_policy.events.arn}"
-}
-
-resource "aws_iam_role_policy_attachment" "events_cloudwatch" {
-  role       = "${aws_iam_role.events.name}"
-  policy_arn = "${local.lambda_policy}"
-}
-
-resource "aws_iam_role_policy_attachment" "events_secrets" {
-  role       = "${aws_iam_role.events.name}"
-  policy_arn = "${aws_iam_policy.secrets.arn}"
 }
 
 resource "aws_kms_key" "slackbot" {
@@ -433,7 +399,7 @@ resource "aws_lambda_function" "callbacks" {
   function_name    = "${local.callbacks_function_name}"
   handler          = "index.callbacks"
   memory_size      = "${var.callbacks_lambda_memory_size}"
-  role             = "${aws_iam_role.callbacks.arn}"
+  role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
   source_code_hash = "${data.archive_file.callbacks.output_base64sha256}"
   timeout          = "${var.callbacks_lambda_timeout}"
@@ -457,7 +423,7 @@ resource "aws_lambda_function" "events" {
   function_name    = "${local.events_function_name}"
   handler          = "index.events"
   memory_size      = "${var.events_lambda_memory_size}"
-  role             = "${aws_iam_role.events.arn}"
+  role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
   source_code_hash = "${data.archive_file.events.output_base64sha256}"
   timeout          = "${var.events_lambda_timeout}"
@@ -501,7 +467,7 @@ resource "aws_secretsmanager_secret" "slackbot" {
   tags                    = "${var.secret_tags}"
 }
 
-resource "aws_secretsmanager_secret_version" "secrets" {
+resource "aws_secretsmanager_secret_version" "slackbot" {
   secret_id     = "${aws_secretsmanager_secret.slackbot.id}"
   secret_string = "${jsonencode("${local.secrets}")}"
 }

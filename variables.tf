@@ -40,7 +40,7 @@ variable "callbacks_lambda_function_name" {
 
 variable "callbacks_lambda_memory_size" {
   description = "Memory for Lambda function."
-  default     = 512
+  default     = 1024
 }
 
 variable "callbacks_lambda_tags" {
@@ -75,7 +75,7 @@ variable "events_lambda_function_name" {
 
 variable "events_lambda_memory_size" {
   description = "Memory for Lambda function."
-  default     = 512
+  default     = 1024
 }
 
 variable "events_lambda_tags" {
