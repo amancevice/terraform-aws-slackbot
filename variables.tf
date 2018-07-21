@@ -165,6 +165,11 @@ variable "secret_tags" {
   }
 }
 
+variable "signing_version" {
+  description = "Slack signing version"
+  default     = "v0"
+}
+
 variable "slack_bot_access_token" {
   description = "Slack OAuth bot access token."
   default     = ""
