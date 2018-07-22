@@ -1,28 +1,27 @@
 const crypto = require('crypto');
 const secret = process.env.SECRET;
-const signing_version = process.env.SIGNING_VERSION;
 const sns_topic_prefix = process.env.SNS_TOPIC_PREFIX;
 
-let signing_secret;
+let secrets;
 
 /**
  * Get Slack tokens from memory or AWS SecretsManager.
  */
 function getSigningSecret() {
   return new Promise((resolve, reject) => {
-    if (signing_secret) {
-      resolve(signing_secret);
+    if (secrets) {
+      resolve(secrets);
     } else {
       console.log(`FETCH ${secret}`);
       const AWS = require('aws-sdk');
-      const secrets = new AWS.SecretsManager();
-      secrets.getSecretValue({SecretId: secret}, (err, data) => {
+      const secretsmanager = new AWS.SecretsManager();
+      secretsmanager.getSecretValue({SecretId: secret}, (err, data) => {
         if (err) {
           reject(err);
         } else {
-          signing_secret = JSON.parse(data.SecretString).SIGNING_SECRET;
-          console.log(`RECEIVED SIGNING SECRET`);
-          resolve(signing_secret);
+          secrets = JSON.parse(data.SecretString);
+          console.log(`RECEIVED ${secret}`);
+          resolve(secrets);
         }
       });
     }
@@ -38,9 +37,9 @@ function verifyRequest(event) {
   return new Promise((resolve, reject) => {
     const ts = event.headers['X-Slack-Request-Timestamp']
     const req = event.headers['X-Slack-Signature'];
-    const hmac = crypto.createHmac('sha256', signing_secret);
-    const data = `${signing_version}:${event.headers['X-Slack-Request-Timestamp']}:${event.body}`;
-    const sig = `${signing_version}=${hmac.update(data).digest('hex')}`;
+    const hmac = crypto.createHmac('sha256', secrets.SIGNING_SECRET);
+    const data = `${secrets.SIGNING_VERSION}:${event.headers['X-Slack-Request-Timestamp']}:${event.body}`;
+    const sig = `${secrets.SIGNING_VERSION}=${hmac.update(data).digest('hex')}`;
     console.log(`SIGNATURES ${JSON.stringify({request: req, calculated: sig})}`);
     if (Math.abs(new Date()/1000 - ts) > 60 * 5) {
       reject('Request too old');
