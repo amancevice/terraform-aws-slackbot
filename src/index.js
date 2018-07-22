@@ -7,7 +7,7 @@ let secrets;
 /**
  * Get Slack tokens from memory or AWS SecretsManager.
  */
-function getSigningSecret() {
+function getSecrets() {
   return new Promise((resolve, reject) => {
     if (secrets) {
       resolve(secrets);
@@ -120,7 +120,7 @@ function publishPayload(payload, sns_topic_suffix) {
  */
 function callbacks(event, context, callback) {
   console.log(`EVENT ${JSON.stringify(event)}`);
-  return getSigningSecret().then((res) => {
+  return getSecrets().then((res) => {
     return verifyRequest(event);
   }).then((res) => {
     return processCallback(res);
@@ -141,7 +141,7 @@ function callbacks(event, context, callback) {
  */
 function events(event, context, callback) {
   console.log(`EVENT ${JSON.stringify(event)}`);
-  return getSigningSecret().then((res) => {
+  return getSecrets().then((res) => {
     return verifyRequest(event);
   }).then((res) => {
     return processEvent(res);
