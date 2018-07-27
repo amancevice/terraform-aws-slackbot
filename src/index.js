@@ -120,11 +120,10 @@ function publishPayload(payload, sns_topic_suffix) {
     const AWS = require('aws-sdk');
     const SNS = new AWS.SNS();
     const topic = `${sns_topic_prefix}${sns_topic_suffix}`;
-    console.log(`TOPIC ${topic}`);
-    SNS.publish({
-      Message: JSON.stringify(payload),
-      TopicArn: topic
-    }, (err, data) => {
+    const message = Buffer.from(JSON.stringify(payload)).toString('base64');
+    const options = {Message: message, TopicArn: topic};
+    console.log(`PUBLISH ${JSON.stringify(options)}`);
+    SNS.publish(options, (err, data) => {
       if (err) {
         reject(err);
       } else {
