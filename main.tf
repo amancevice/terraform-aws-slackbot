@@ -5,6 +5,7 @@ provider "archive" {
 locals {
   callbacks_function_name = "${coalesce("${var.callbacks_lambda_function_name}", "slack-${var.api_name}-callbacks")}"
   events_function_name    = "${coalesce("${var.events_lambda_function_name}", "slack-${var.api_name}-events")}"
+  oauth_function_name     = "${coalesce("${var.oauth_lambda_function_name}", "slack-${var.api_name}-oauth")}"
   kms_key_alias           = "${coalesce("${var.kms_key_alias}", "alias/${var.api_name}")}"
   lambda_policy           = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   role_path               = "${coalesce("${var.role_path}", "/${var.api_name}/")}"
@@ -123,24 +124,10 @@ locals {
   }
 }
 
-data "archive_file" "callbacks" {
+data "archive_file" "package" {
+  output_path = "${path.module}/dist/package.zip"
+  source_dir  = "${path.module}/src"
   type        = "zip"
-  output_path = "${path.module}/dist/callbacks.zip"
-
-  source {
-    content  = "${file("${path.module}/src/index.js")}"
-    filename = "index.js"
-  }
-}
-
-data "archive_file" "events" {
-  type        = "zip"
-  output_path = "${path.module}/dist/events.zip"
-
-  source {
-    content  = "${file("${path.module}/src/index.js")}"
-    filename = "index.js"
-  }
 }
 
 data "aws_caller_identity" "current" {
@@ -216,6 +203,16 @@ resource "aws_api_gateway_integration" "events" {
   uri                     = "${aws_lambda_function.events.invoke_arn}"
 }
 
+resource "aws_api_gateway_integration" "oauth" {
+  content_handling        = "CONVERT_TO_TEXT"
+  http_method             = "${aws_api_gateway_method.oauth_get.http_method}"
+  integration_http_method = "POST"
+  resource_id             = "${aws_api_gateway_resource.oauth.id}"
+  rest_api_id             = "${aws_api_gateway_rest_api.api.id}"
+  type                    = "AWS_PROXY"
+  uri                     = "${aws_lambda_function.oauth.invoke_arn}"
+}
+
 resource "aws_api_gateway_method" "callbacks_post" {
   authorization = "NONE"
   http_method   = "POST"
@@ -248,6 +245,13 @@ resource "aws_api_gateway_method" "events_post" {
   }
 }
 
+resource "aws_api_gateway_method" "oauth_get" {
+  authorization = "NONE"
+  http_method   = "GET"
+  resource_id   = "${aws_api_gateway_resource.oauth.id}"
+  rest_api_id   = "${aws_api_gateway_rest_api.api.id}"
+}
+
 resource "aws_api_gateway_method_response" "callbacks_200" {
   http_method = "${aws_api_gateway_method.callbacks_post.http_method}"
   resource_id = "${aws_api_gateway_method.callbacks_post.resource_id}"
@@ -270,6 +274,13 @@ resource "aws_api_gateway_method_response" "events_200" {
     "application/json" = "Empty"
     "application/json" = "Challenge"
   }
+}
+
+resource "aws_api_gateway_method_response" "oauth_302" {
+  http_method = "${aws_api_gateway_method.oauth_get.http_method}"
+  resource_id = "${aws_api_gateway_method.oauth_get.resource_id}"
+  rest_api_id = "${aws_api_gateway_rest_api.api.id}"
+  status_code = "302"
 }
 
 resource "aws_api_gateway_model" "callback" {
@@ -320,6 +331,12 @@ resource "aws_api_gateway_resource" "events" {
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   parent_id   = "${aws_api_gateway_rest_api.api.root_resource_id}"
   path_part   = "events"
+}
+
+resource "aws_api_gateway_resource" "oauth" {
+  rest_api_id = "${aws_api_gateway_rest_api.api.id}"
+  parent_id   = "${aws_api_gateway_rest_api.api.root_resource_id}"
+  path_part   = "oauth"
 }
 
 resource "aws_api_gateway_resource" "slash_commands" {
@@ -398,13 +415,13 @@ resource "aws_kms_alias" "slackbot" {
 
 resource "aws_lambda_function" "callbacks" {
   description      = "${var.callbacks_lambda_description}"
-  filename         = "${data.archive_file.callbacks.output_path}"
+  filename         = "${data.archive_file.package.output_path}"
   function_name    = "${local.callbacks_function_name}"
   handler          = "index.callbacks"
   memory_size      = "${var.callbacks_lambda_memory_size}"
   role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
-  source_code_hash = "${data.archive_file.callbacks.output_base64sha256}"
+  source_code_hash = "${data.archive_file.package.output_base64sha256}"
   timeout          = "${var.callbacks_lambda_timeout}"
 
   environment {
@@ -421,19 +438,43 @@ resource "aws_lambda_function" "callbacks" {
 
 resource "aws_lambda_function" "events" {
   description      = "${var.events_lambda_description}"
-  filename         = "${data.archive_file.events.output_path}"
+  filename         = "${data.archive_file.package.output_path}"
   function_name    = "${local.events_function_name}"
   handler          = "index.events"
   memory_size      = "${var.events_lambda_memory_size}"
   role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
-  source_code_hash = "${data.archive_file.events.output_base64sha256}"
+  source_code_hash = "${data.archive_file.package.output_base64sha256}"
   timeout          = "${var.events_lambda_timeout}"
 
   environment {
     variables {
       SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
       SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_event_"
+    }
+  }
+
+  tags {
+    deployment-tool = "terraform"
+  }
+}
+
+resource "aws_lambda_function" "oauth" {
+  description      = "${var.oauth_lambda_description}"
+  filename         = "${data.archive_file.package.output_path}"
+  function_name    = "${local.oauth_function_name}"
+  handler          = "index.oauth"
+  memory_size      = "${var.oauth_lambda_memory_size}"
+  role             = "${aws_iam_role.slackbot.arn}"
+  runtime          = "nodejs8.10"
+  source_code_hash = "${data.archive_file.package.output_base64sha256}"
+  timeout          = "${var.oauth_lambda_timeout}"
+
+  environment {
+    variables {
+      OAUTH_REDIRECT   = "${var.oauth_redirect}"
+      SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
+      SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_callback_"
     }
   }
 
@@ -456,6 +497,14 @@ resource "aws_lambda_permission" "events" {
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/${aws_api_gateway_method.events_post.http_method}/${aws_api_gateway_resource.events.path_part}"
+}
+
+resource "aws_lambda_permission" "oauth" {
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.oauth.arn}"
+  principal     = "apigateway.amazonaws.com"
+  statement_id  = "AllowAPIGatewayInvoke"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/${aws_api_gateway_method.oauth_get.http_method}/${aws_api_gateway_resource.oauth.path_part}"
 }
 
 resource "aws_secretsmanager_secret" "slackbot" {

@@ -48,6 +48,11 @@ output "kms_key_id" {
   value       = "${aws_kms_key.slackbot.key_id}"
 }
 
+output "oauth_request_url" {
+  description = "OAuth Request URL."
+  value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.oauth.path_part}"
+}
+
 output "secret" {
   description = "Slackbot SecretsManager secret name."
   value       = "${aws_secretsmanager_secret.slackbot.name}"
