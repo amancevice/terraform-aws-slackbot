@@ -22,28 +22,17 @@ variable "api_endpoint_configuration" {
   }
 }
 
-variable "callback_ids" {
-  description = "List of Slack callback IDs."
-  type        = "list"
-  default     = []
-}
-
-variable "callbacks_lambda_description" {
-  description = "Description of the function."
-  default     = "Slack callbacks handler"
-}
-
-variable "callbacks_lambda_function_name" {
+variable "lambda_function_name" {
   description = "Lambda Function for publishing events from Slack to SNS."
   default     = ""
 }
 
-variable "callbacks_lambda_memory_size" {
+variable "lambda_memory_size" {
   description = "Memory for Lambda function."
-  default     = 1024
+  default     = 512
 }
 
-variable "callbacks_lambda_tags" {
+variable "lambda_tags" {
   description = "A set of key/value label pairs to assign to the function."
   type        = "map"
 
@@ -52,78 +41,14 @@ variable "callbacks_lambda_tags" {
   }
 }
 
-variable "callbacks_lambda_timeout" {
+variable "lambda_timeout" {
   description = "Timeout in seconds for Lambda function."
   default     = 3
-}
-
-variable "event_types" {
-  description = "List of slack event types."
-  type        = "list"
-  default     = []
-}
-
-variable "events_lambda_description" {
-  description = "Description of the function."
-  default     = "Slack events handler"
-}
-
-variable "events_lambda_function_name" {
-  description = "Lambda Function for publishing events from Slack to SNS."
-  default     = ""
-}
-
-variable "events_lambda_memory_size" {
-  description = "Memory for Lambda function."
-  default     = 1024
-}
-
-variable "events_lambda_tags" {
-  description = "A set of key/value label pairs to assign to the function."
-  type        = "map"
-
-  default {
-    deployment-tool = "terraform"
-  }
-}
-
-variable "events_lambda_timeout" {
-  description = "Timeout in seconds for Lambda function."
-  default     = 3
-}
-
-variable "oauth_lambda_description" {
-  description = "Description of the function."
-  default     = "Slack OAuth handler"
-}
-
-variable "oauth_lambda_function_name" {
-  description = "Lambda Function for publishing events from Slack to SNS."
-  default     = ""
-}
-
-variable "oauth_lambda_memory_size" {
-  description = "Memory for Lambda function."
-  default     = 1024
-}
-
-variable "oauth_lambda_tags" {
-  description = "A set of key/value label pairs to assign to the function."
-  type        = "map"
-
-  default {
-    deployment-tool = "terraform"
-  }
 }
 
 variable "oauth_redirect" {
   description = "OAuth redirect URL."
   default     = ""
-}
-
-variable "oauth_lambda_timeout" {
-  description = "Timeout in seconds for Lambda function."
-  default     = 3
 }
 
 variable "kms_key_alias" {
@@ -162,6 +87,11 @@ variable "kms_key_tags" {
 variable "kms_key_usage" {
   description = "Usage of Slackbot KMS Key."
   default     = "ENCRYPT_DECRYPT"
+}
+
+variable "role_name" {
+  description = "Name for Slackbot role."
+  default     = ""
 }
 
 variable "role_path" {

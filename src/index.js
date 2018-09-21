@@ -55,64 +55,9 @@ function verifyRequest(event) {
 }
 
 /**
- * Process Slack callback.
- *
- * @param {object} body Parsed Slack request body.
- */
-function processCallback(body) {
-  return Promise.resolve(body).then((res) => {
-    const qs = require('querystring');
-    const params = qs.parse(body);
-    return JSON.parse(params.payload);
-  }).then((res) => {
-    return publishPayload(res, res.callback_id);
-  });
-}
-
-/**
- * Process Slack event.
- *
- * @param {object} body Parsed Slack request body.
- */
-function processEvent(body) {
-  return Promise.resolve(body).then((res) => {
-    return JSON.parse(body);
-  }).then((res) => {
-    if (res.type === 'url_verification') {
-      const challenge = {challenge: res.challenge};
-      console.log(`CHALLENGE ${JSON.stringify(challenge)}`);
-      return challenge;
-    } else {
-      return publishPayload(res, res.event.type);
-    }
-  });
-}
-
-/**
- * Process Slack .
- *
- * @param {object} body Parsed Slack request body.
- */
-function processOAuth(event) {
-  const { WebClient } = require('@slack/client');
-  const slack = new WebClient(secrets.BOT_ACCESS_TOKEN);
-  const options = {
-    code: event.queryStringParameters.code,
-    client_id: secrets.CLIENT_ID,
-    client_secret: secrets.CLIENT_SECRET
-  };
-  return slack.oauth.access(options).then((res) => {
-    console.log(`ACCESS ${JSON.stringify(res)}`);
-    return slack.team.info({team: res.team_id}).then((res) => {
-      return `https://${res.team.domain}.slack.com/`;
-    });
-  });
-}
-
-/**
  * Process SNS message.
  *
- * @param {object} payload Slack payload.
+ * @param {object} payload SNS payload.
  */
 function publishPayload(payload, sns_topic_suffix) {
   return new Promise((resolve, reject) => {
@@ -136,75 +81,119 @@ function publishPayload(payload, sns_topic_suffix) {
 /**
  * AWS Lambda handler for callbacks.
  *
- * @param {object} event SNS event object.
- * @param {object} context SNS event context.
- * @param {function} callback Lambda callback function.
+ * @param {object} event Event object.
  */
-function callbacks(event, context, callback) {
-  console.log(`EVENT ${JSON.stringify(event)}`);
-  return getSecrets().then((res) => {
-    return verifyRequest(event);
+function handleCallback(event) {
+  return Promise.resolve(event.body).then((res) => {
+    const qs = require('querystring');
+    const params = qs.parse(res);
+    return JSON.parse(params.payload);
   }).then((res) => {
-    return processCallback(res);
+    return publishPayload(res, res.callback_id);
   }).then((res) => {
-    callback(null, {statusCode: '201', body: ''});
-  }).catch((err) => {
-    console.error(`ERROR ${JSON.stringify(err)}`);
-    callback(err, {statusCode: '400', body: err.message});
+    return {
+      statusCode: '204',
+    };
   });
 }
 
 /**
  * AWS Lambda handler for events.
  *
- * @param {object} event SNS event object.
- * @param {object} context SNS event context.
- * @param {function} callback Lambda callback function.
+ * @param {object} event Event object.
  */
-function events(event, context, callback) {
-  console.log(`EVENT ${JSON.stringify(event)}`);
-  return getSecrets().then((res) => {
-    return verifyRequest(event);
+function handleEvent(event) {
+  return Promise.resolve(event.body).then((res) => {
+    return JSON.parse(res);
   }).then((res) => {
-    return processEvent(res);
+    if (res.type === 'url_verification') {
+      const challenge = {challenge: res.challenge};
+      console.log(`CHALLENGE ${JSON.stringify(challenge)}`);
+      return challenge;
+    } else {
+      return publishPayload(res, res.event.type);
+    }
   }).then((res) => {
-    callback(null, {
+    return {
       statusCode: '200',
       body: JSON.stringify(res),
-      headers: {'Content-Type': 'application/json'}
-    });
-  }).catch((err) => {
-    console.error(`ERROR ${JSON.stringify(err)}`);
-    callback(err, {statusCode: '400', body: err.message});
+      headers: {'Content-Type': 'application/json'},
+    };
+  });
+}
+
+/**
+ * AWS Lambda handler for slash commands.
+ *
+ * @param {object} event Event object.
+ */
+function handleSlashCommand(event) {
+  return Promise.resolve(event.body).then((res) => {
+    const qs = require('querystring');
+    return qs.parse(res);
+  }).then((res) => {
+    return publishPayload(res, res.command.replace(/^\//, ''));
+  }).then((res) => {
+    return {
+      statusCode: '204',
+    };
   });
 }
 
 /**
  * AWS Lambda handler for OAuth.
  *
- * @param {object} event SNS event object.
- * @param {object} context SNS event context.
- * @param {function} callback Lambda callback function.
+ * @param {object} event Event object.
  */
-function oauth(event, context, callback) {
-  console.log(`EVENT ${JSON.stringify(event)}`);
-  return getSecrets().then((res) => {
-    return processOAuth(event);
-  }).then((redirect) => {
-    callback(null, {
-      statusCode: '301',
-      body: null,
-      headers: {
-        'Content-Type': 'application/json',
-        'Location': oauth_redirect || redirect
-      }
+function handleOAuth(event) {
+  const { WebClient } = require('@slack/client');
+  const slack = new WebClient(secrets.BOT_ACCESS_TOKEN);
+  const options = {
+    code: event.queryStringParameters.code,
+    client_id: secrets.CLIENT_ID,
+    client_secret: secrets.CLIENT_SECRET
+  };
+  return slack.oauth.access(options).then((res) => {
+    console.log(`ACCESS ${JSON.stringify(res)}`);
+    return slack.team.info({team: res.team_id}).then((res) => {
+      return `https://${res.team.domain}.slack.com/`;
     });
-  }).catch((err) => {
-    console.error(`ERROR ${JSON.stringify(err)}`);
-    callback(err, {statusCode: '400', body: err.message});
+  }).then((res) => {
+    return {
+      statusCode: '301',
+      headers: {'Location': oauth_redirect || res},
+    };
   });
 }
 
-exports.callbacks = callbacks;
-exports.events = events;
-exports.oauth = oauth;
+/**
+ * AWS API Gateway router.
+ *
+ * @param {object} event Event object.
+ * @param {object} context Event context.
+ * @param {function} callback Lambda callback function.
+ */
+function handler(event, context, callback) {
+  console.log(`EVENT ${JSON.stringify(event)}`);
+  getSecrets().then((res) => {
+    return verifyRequest(event);
+  }).then((res) => {
+    return {
+      'GET': {
+        '/oauth': handleOAuth,
+      },
+      'POST': {
+        '/callbacks': handleCallback,
+        '/events': handleEvent,
+        '/slash-commands': handleSlashCommand,
+      }
+    }[event.httpMethod][event.path](event);
+  }).then((res) => {
+    callback(null, res);
+  }).catch((err) => {
+    console.error(`ERROR ${JSON.stringify(err)}`);
+    callback(err, {statusCode: '400', body: 'Bad request'});
+  });
+}
+
+exports.handler = handler;

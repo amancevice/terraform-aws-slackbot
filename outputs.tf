@@ -13,34 +13,9 @@ output "api_name" {
   value       = "${aws_api_gateway_rest_api.api.name}"
 }
 
-output "callback_resource_ids" {
-  description = "API Gateway Resource IDs for Slack callbacks."
-  value       = "${zipmap("${var.callback_ids}", "${aws_api_gateway_resource.callback.*.id}")}"
-}
-
-output "callback_topic_arns" {
-  description = "SNS topics for Slack callbacks."
-  value       = ["${aws_sns_topic.callback_ids.*.arn}"]
-}
-
-output "callbacks_request_url" {
-  description = "Callbacks Request URL."
-  value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.callbacks.path_part}"
-}
-
-output "event_resource_ids" {
-  description = "API Gateway Resource IDs for Slack events."
-  value       = "${zipmap("${var.event_types}", "${aws_api_gateway_resource.event.*.id}")}"
-}
-
-output "event_topic_arns" {
-  description = "SNS topics for Slack events."
-  value       = ["${aws_sns_topic.event_types.*.arn}"]
-}
-
-output "events_request_url" {
-  description = "Events Request URL."
-  value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.events.path_part}"
+output "api_proxy_resource_id" {
+  description = "REST API {proxy+} resource ID."
+  value       = "${aws_api_gateway_resource.proxy.id}"
 }
 
 output "kms_key_id" {
@@ -48,9 +23,24 @@ output "kms_key_id" {
   value       = "${aws_kms_key.slackbot.key_id}"
 }
 
-output "oauth_request_url" {
-  description = "OAuth Request URL."
-  value       = "${aws_api_gateway_deployment.api.invoke_url}/${aws_api_gateway_resource.oauth.path_part}"
+output "lambda" {
+  description = "API Lambda name."
+  value       = "${aws_lambda_function.lambda.function_name}"
+}
+
+output "request_urls" {
+  description = "Callbacks Request URL."
+  value       = [
+    "${aws_api_gateway_deployment.api.invoke_url}/callbacks",
+    "${aws_api_gateway_deployment.api.invoke_url}/events",
+    "${aws_api_gateway_deployment.api.invoke_url}/oauth",
+    "${aws_api_gateway_deployment.api.invoke_url}/slash-commands",
+  ]
+}
+
+output "role" {
+  description = "Name of basic execution role for Slackbot lambdas."
+  value       = "${aws_iam_role.slackbot.name}"
 }
 
 output "secret" {
@@ -61,19 +51,4 @@ output "secret" {
 output "secrets_policy_arn" {
   description = "Slackbot KMS key decryption permission policy ARN."
   value       = "${aws_iam_policy.secrets.arn}"
-}
-
-output "role" {
-  description = "Name of basic execution role for Slackbot lambdas."
-  value       = "${aws_iam_role.slackbot.name}"
-}
-
-output "slash_commands_request_url" {
-  description = "Slash commands base URL."
-  value       = "${aws_api_gateway_deployment.api.invoke_url}/slash-commands"
-}
-
-output "slash_commands_resource_id" {
-  description = "Slash Command resource ID."
-  value       = "${aws_api_gateway_resource.slash_commands.id}"
 }
