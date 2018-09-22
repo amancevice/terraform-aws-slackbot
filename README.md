@@ -4,15 +4,11 @@ Slackbot endpoints backed by API Gateway + Lambda.
 
 ## Architecture
 
-The archetecture for the Slackbot API is fairly straightforward. For both events and callbacks, payloads are routed to SNS. For events, they are routed by `event_type`, and for callbacks, `callback_id`.
+The archetecture for the Slackbot API is fairly straightforward. All requests are routed asynchronously to to SNS. By convention, payloads are routed to topics corresponding to the specific event. Eg, `slack_event_<event_type>`, `slack_callback_<callback_id>`, or `slack_slash_<slash_command_name>`.
 
-### Callbacks
+OAuth requests are authenticated using the Slack client and redirected to the configured redirect URL.
 
-<img src="https://github.com/amancevice/terraform-aws-slackbot/blob/master/docs/images/callbacks.png?raw=true"></img>
-
-### Events
-
-<img src="https://github.com/amancevice/terraform-aws-slackbot/blob/master/docs/images/events.png?raw=true"></img>
+<img src="https://github.com/amancevice/terraform-aws-slackbot/blob/master/docs/images/arch.png?raw=true"></img>
 
 ## Quickstart
 
@@ -35,5 +31,3 @@ This will create an API with the following endpoints to be configured in Slack:
 - `/v1/slash-commands` The request URL for Slack slash commands
 
 You will need to separately create an SNS topic for every callback, event, and slash command your app will invoke. Event, callback, and slash command endpoints listen for `POST` requests made by Slack (using the verification token to ensure the request is indeed coming from Slack) and simply publish the payload to the SNS topic to which the request applies.
-
-For example, if Slack sends a `channel_rename` event, the event will be published to the `slack_event_channel_rename` topic.

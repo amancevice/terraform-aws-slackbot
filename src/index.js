@@ -89,7 +89,7 @@ function handleCallback(event) {
     const params = qs.parse(res);
     return JSON.parse(params.payload);
   }).then((res) => {
-    return publishPayload(res, res.callback_id);
+    return publishPayload(res, `callback_${res.callback_id}`);
   }).then((res) => {
     return {
       statusCode: '204',
@@ -111,7 +111,7 @@ function handleEvent(event) {
       console.log(`CHALLENGE ${JSON.stringify(challenge)}`);
       return challenge;
     } else {
-      return publishPayload(res, res.event.type);
+      return publishPayload(res, `event_${res.event.type}`);
     }
   }).then((res) => {
     return {
@@ -132,7 +132,7 @@ function handleSlashCommand(event) {
     const qs = require('querystring');
     return qs.parse(res);
   }).then((res) => {
-    return publishPayload(res, res.command.replace(/^\//, ''));
+    return publishPayload(res, res.command.replace(/^\//, 'slash_'));
   }).then((res) => {
     return {
       statusCode: '204',

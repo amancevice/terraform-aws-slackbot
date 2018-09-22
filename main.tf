@@ -162,7 +162,7 @@ resource "aws_lambda_function" "lambda" {
     variables {
       OAUTH_REDIRECT   = "${var.oauth_redirect}"
       SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
-      SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_callback_"
+      SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_"
     }
   }
 
