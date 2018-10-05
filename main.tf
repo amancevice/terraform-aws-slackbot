@@ -63,6 +63,7 @@ data "aws_iam_policy_document" "publish" {
 }
 
 resource "aws_api_gateway_deployment" "api" {
+  depends_on  = ["aws_api_gateway_integration.proxy_any"]
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${var.api_stage_name}"
 }

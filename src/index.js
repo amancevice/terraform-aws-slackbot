@@ -19,7 +19,10 @@ function getSecrets() {
       const secretsmanager = new AWS.SecretsManager();
       secretsmanager.getSecretValue({SecretId: secret}, (err, data) => {
         if (err) {
-          reject(err);
+          reject({
+            statusCode: 503,
+            body: JSON.stringify({error: 'Could not authenticate request'}),
+          });
         } else {
           secrets = JSON.parse(data.SecretString);
           console.log(`SECRET ${secret}`);
@@ -45,9 +48,15 @@ function verifyRequest(event) {
     const delta = Math.abs(new Date()/1000 - ts);
     console.log(`SIGNATURES ${JSON.stringify({request: req, calculated: sig})}`);
     if (delta > 60 * 5) {
-      reject('Request too old');
+      reject({
+        statusCode: 403,
+        body: JSON.stringify({error: 'Request too old'}),
+      });
     } else if (req !== sig) {
-      reject('Signatures do not match');
+      reject({
+        statusCode: 401,
+        body: JSON.stringify({error: 'Signatures do not match'}),
+      });
     } else {
       resolve(event.body);
     }
@@ -92,7 +101,7 @@ function handleCallback(event) {
     return publishPayload(res, `callback_${res.callback_id}`);
   }).then((res) => {
     return {
-      statusCode: '204',
+      statusCode: 204,
     };
   });
 }
@@ -115,7 +124,7 @@ function handleEvent(event) {
     }
   }).then((res) => {
     return {
-      statusCode: '200',
+      statusCode: 200,
       body: JSON.stringify(res),
       headers: {'Content-Type': 'application/json'},
     };
@@ -135,7 +144,7 @@ function handleSlashCommand(event) {
     return publishPayload(res, res.command.replace(/^\//, 'slash_'));
   }).then((res) => {
     return {
-      statusCode: '204',
+      statusCode: 204,
     };
   });
 }
@@ -160,7 +169,7 @@ function handleOAuth(event) {
     });
   }).then((res) => {
     return {
-      statusCode: '301',
+      statusCode: 301,
       headers: {'Location': oauth_redirect || res},
     };
   });
@@ -192,7 +201,7 @@ function handler(event, context, callback) {
     callback(null, res);
   }).catch((err) => {
     console.error(`ERROR ${JSON.stringify(err)}`);
-    callback(err, {statusCode: '400', body: 'Bad request'});
+    callback(null, err);
   });
 }
 
