@@ -1,5 +1,0 @@
-{
-  "dependencies": {
-    "@slack/client": "^4.8.0"
-  }
-}
