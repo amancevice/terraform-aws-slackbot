@@ -1,3 +1,5 @@
-slack_access_token     = "<slack-access-token>"
-slack_bot_access_token = "<slack-bot-access-token>"
-slack_signing_secret   = "<slack-signing-secret>"
+slack_bot_access_token  = "<slack-bot-access-token>"
+slack_client_id         = "<slack-client-id>"
+slack_client_secret     = "<slack-client-secret>"
+slack_signing_secret    = "<slack-signing-secret>"
+slack_user_access_token = "<slack-access-token>"

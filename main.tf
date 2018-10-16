@@ -1,7 +1,3 @@
-provider "archive" {
-  version = "~> 1.0"
-}
-
 locals {
   kms_key_alias  = "${coalesce(var.kms_key_alias, "alias/${var.api_name}")}"
   function_name  = "${coalesce(var.lambda_function_name, "slack-${var.api_name}-api")}"
@@ -18,23 +14,16 @@ locals {
     SIGNING_SECRET    = "${var.slack_signing_secret}"
     SIGNING_VERSION   = "${var.slack_signing_version}"
     USER_ACCESS_TOKEN = "${var.slack_user_access_token}"
-    WORKSPACE_TOKEN   = "${var.slack_workspace_token}"
   }
 }
 
-data "archive_file" "package" {
-  output_path = "${path.module}/dist/package.zip"
-  source_dir  = "${path.module}/src"
-  type        = "zip"
+data aws_caller_identity current {
 }
 
-data "aws_caller_identity" "current" {
+data aws_region current {
 }
 
-data "aws_region" "current" {
-}
-
-data "aws_iam_policy_document" "assume_role" {
+data aws_iam_policy_document assume_role {
   statement {
     actions = ["sts:AssumeRole"]
 
@@ -45,7 +34,7 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
-data "aws_iam_policy_document" "secrets" {
+data aws_iam_policy_document secrets {
   statement {
     actions   = ["kms:Decrypt", "secretsmanager:GetSecretValue"]
     resources = [
@@ -55,20 +44,20 @@ data "aws_iam_policy_document" "secrets" {
   }
 }
 
-data "aws_iam_policy_document" "publish" {
+data aws_iam_policy_document publish {
   statement {
     actions   = ["sns:Publish"]
     resources = ["${local.sns_arn_prefix}:slack_*"]
   }
 }
 
-resource "aws_api_gateway_deployment" "api" {
+resource aws_api_gateway_deployment api {
   depends_on  = ["aws_api_gateway_integration.proxy_any"]
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${var.api_stage_name}"
 }
 
-resource "aws_api_gateway_integration" "proxy_any" {
+resource aws_api_gateway_integration proxy_any {
   content_handling        = "CONVERT_TO_TEXT"
   http_method             = "${aws_api_gateway_method.any.http_method}"
   integration_http_method = "POST"
@@ -79,62 +68,67 @@ resource "aws_api_gateway_integration" "proxy_any" {
   uri                     = "${aws_lambda_function.lambda.invoke_arn}"
 }
 
-resource "aws_api_gateway_method" "any" {
+resource aws_api_gateway_method any {
   authorization = "NONE"
   http_method   = "ANY"
   resource_id   = "${aws_api_gateway_resource.proxy.id}"
   rest_api_id   = "${aws_api_gateway_rest_api.api.id}"
 }
 
-resource "aws_api_gateway_resource" "proxy" {
+resource aws_api_gateway_resource proxy {
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   parent_id   = "${aws_api_gateway_rest_api.api.root_resource_id}"
   path_part   = "{proxy+}"
 }
 
-resource "aws_api_gateway_rest_api" "api" {
+resource aws_api_gateway_rest_api api {
   description            = "${var.api_description}"
   name                   = "${var.api_name}"
   endpoint_configuration = ["${var.api_endpoint_configuration}"]
 }
 
-resource "aws_iam_policy" "publish" {
+resource aws_cloudwatch_log_group logs {
+  name              = "/aws/lambda/${aws_lambda_function.lambda.function_name}"
+  retention_in_days = "${var.cloudwatch_log_group_retention_in_days}"
+}
+
+resource aws_iam_policy publish {
   name        = "slack-${var.api_name}-publish"
   path        = "${local.role_path}"
   description = "Publish Slackbot callbacks"
   policy      = "${data.aws_iam_policy_document.publish.json}"
 }
 
-resource "aws_iam_policy" "secrets" {
+resource aws_iam_policy secrets {
   name        = "slack-${var.api_name}-decrypt-secrets"
   path        = "${local.role_path}"
   description = "Decrypt Slackbot SecretsManager secret"
   policy      = "${data.aws_iam_policy_document.secrets.json}"
 }
 
-resource "aws_iam_role" "slackbot" {
+resource aws_iam_role slackbot {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
   description        = "Slackbot resource access"
   name               = "${local.role_name}"
   path               = "${local.role_path}"
 }
 
-resource "aws_iam_role_policy_attachment" "cloudwatch" {
+resource aws_iam_role_policy_attachment cloudwatch {
   role       = "${aws_iam_role.slackbot.name}"
   policy_arn = "${local.lambda_policy}"
 }
 
-resource "aws_iam_role_policy_attachment" "secrets" {
+resource aws_iam_role_policy_attachment secrets {
   role       = "${aws_iam_role.slackbot.name}"
   policy_arn = "${aws_iam_policy.secrets.arn}"
 }
 
-resource "aws_iam_role_policy_attachment" "publish" {
+resource aws_iam_role_policy_attachment publish {
   role       = "${aws_iam_role.slackbot.name}"
   policy_arn = "${aws_iam_policy.publish.arn}"
 }
 
-resource "aws_kms_key" "slackbot" {
+resource aws_kms_key slackbot {
   description             = "${var.kms_key_name}"
   key_usage               = "${var.kms_key_usage}"
   deletion_window_in_days = "${var.kms_key_deletion_window_in_days}"
@@ -143,36 +137,33 @@ resource "aws_kms_key" "slackbot" {
   tags                    = "${var.kms_key_tags}"
 }
 
-resource "aws_kms_alias" "slackbot" {
+resource aws_kms_alias slackbot {
   name          = "${local.kms_key_alias}"
   target_key_id = "${aws_kms_key.slackbot.key_id}"
 }
 
-resource "aws_lambda_function" "lambda" {
+resource aws_lambda_function lambda {
   description      = "Slack request handler"
-  filename         = "${data.archive_file.package.output_path}"
+  filename         = "${path.module}/package.zip"
   function_name    = "${local.function_name}"
   handler          = "index.handler"
   memory_size      = "${var.lambda_memory_size}"
   role             = "${aws_iam_role.slackbot.arn}"
   runtime          = "nodejs8.10"
-  source_code_hash = "${data.archive_file.package.output_base64sha256}"
+  source_code_hash = "${base64sha256(file("${path.module}/package.zip"))}"
+  tags             = "${var.lambda_tags}"
   timeout          = "${var.lambda_timeout}"
 
   environment {
     variables {
       OAUTH_REDIRECT   = "${var.oauth_redirect}"
-      SECRET           = "${aws_secretsmanager_secret.slackbot.name}"
-      SNS_TOPIC_PREFIX = "${local.sns_arn_prefix}:slack_"
+      AWS_SECRET       = "${aws_secretsmanager_secret.slackbot.name}"
+      PUBLISHER_PREFIX = "${local.sns_arn_prefix}:slack_"
     }
-  }
-
-  tags {
-    deployment-tool = "terraform"
   }
 }
 
-resource "aws_lambda_permission" "invoke" {
+resource aws_lambda_permission invoke {
   action        = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.lambda.arn}"
   principal     = "apigateway.amazonaws.com"
@@ -180,7 +171,7 @@ resource "aws_lambda_permission" "invoke" {
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*/*"
 }
 
-resource "aws_secretsmanager_secret" "slackbot" {
+resource aws_secretsmanager_secret slackbot {
   description             = "Slackbot access tokens."
   kms_key_id              = "${aws_kms_key.slackbot.key_id}"
   name                    = "${local.secret_name}"
@@ -190,7 +181,7 @@ resource "aws_secretsmanager_secret" "slackbot" {
   tags                    = "${var.secret_tags}"
 }
 
-resource "aws_secretsmanager_secret_version" "slackbot" {
+resource aws_secretsmanager_secret_version slackbot {
   secret_id     = "${aws_secretsmanager_secret.slackbot.id}"
   secret_string = "${jsonencode(local.secrets)}"
 }
