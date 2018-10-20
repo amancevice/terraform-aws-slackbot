@@ -12,5 +12,4 @@ module slackbot {
   slack_client_secret     = "${var.slack_client_secret}"
   slack_signing_secret    = "${var.slack_signing_secret}"
   slack_user_access_token = "${var.slack_user_access_token}"
-  slack_workspace_token   = "${var.slack_workspace_token}"
 }
