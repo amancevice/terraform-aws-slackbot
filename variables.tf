@@ -153,3 +153,8 @@ variable slack_user_access_token {
   description = "Slack OAuth user access token."
   default     = ""
 }
+
+variable slack_verify_requests {
+  description = "Verify Slack requests using signing secret."
+  default     = true
+}

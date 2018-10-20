@@ -159,6 +159,7 @@ resource aws_lambda_function lambda {
       OAUTH_REDIRECT   = "${var.oauth_redirect}"
       AWS_SECRET       = "${aws_secretsmanager_secret.slackbot.name}"
       PUBLISHER_PREFIX = "${local.sns_arn_prefix}:slack_"
+      VERIFY_REQUESTS  = "${var.slack_verify_requests}"
     }
   }
 }
