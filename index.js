@@ -1,6 +1,6 @@
 'use strict';
 const awsServerlessExpress = require('aws-serverless-express');
-const app = require('slackbot-express-async');
+const app = require('slackend');
 
 app.set('fetchEnv', () => {
   const AWS = require('aws-sdk');
@@ -27,4 +27,7 @@ app.set('publish', (payload, topic) => {
 });
 
 const server = awsServerlessExpress.createServer(app);
-exports.handler = (event, context) => awsServerlessExpress.proxy(server, event, context);
+exports.handler = (event, context) => {
+  console.log(`EVENT ${JSON.stringify(event)}`);
+  return awsServerlessExpress.proxy(server, event, context);
+};
