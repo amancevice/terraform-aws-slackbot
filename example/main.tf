@@ -1,8 +1,8 @@
-provider "aws" {
+provider aws {
   region = "us-east-1"
 }
 
-module "slackbot" {
+module slackbot {
   source                  = "amancevice/slackbot/aws"
   api_description         = "My Slackbot REST API"
   api_name                = "slackbot"
