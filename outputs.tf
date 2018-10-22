@@ -53,7 +53,6 @@ output role_arn {
   value       = "${aws_iam_role.slackbot.arn}"
 }
 
-
 output role_name {
   description = "Name of basic execution role for Slackbot lambdas."
   value       = "${aws_iam_role.slackbot.name}"
