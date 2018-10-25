@@ -8,11 +8,6 @@ output api_id {
   value       = "${aws_api_gateway_rest_api.api.id}"
 }
 
-output api_invoke_url {
-  description = "REST API deployment invocation URL."
-  value       = "${aws_api_gateway_deployment.api.invoke_url}"
-}
-
 output api_name {
   description = "REST API Name."
   value       = "${aws_api_gateway_rest_api.api.name}"
@@ -36,16 +31,6 @@ output lambda_arn {
 output lambda_name {
   description = "API Lambda name."
   value       = "${aws_lambda_function.lambda.function_name}"
-}
-
-output request_urls {
-  description = "Callbacks Request URL."
-  value       = [
-    "${aws_api_gateway_deployment.api.invoke_url}/callbacks",
-    "${aws_api_gateway_deployment.api.invoke_url}/events",
-    "${aws_api_gateway_deployment.api.invoke_url}/oauth",
-    "${aws_api_gateway_deployment.api.invoke_url}/slash/<cmd>",
-  ]
 }
 
 output role_arn {

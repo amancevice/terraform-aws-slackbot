@@ -1,8 +1,9 @@
 'use strict';
 const awsServerlessExpress = require('aws-serverless-express');
-const app = require('slackend');
+const slackend = require('slackend');
+const baseUrl = process.env.SLACKEND_BASE_URL || '/';
 
-app.set('fetchEnv', () => {
+slackend.app.set('fetchEnv', () => {
   const AWS = require('aws-sdk');
   const secretsmanager = new AWS.SecretsManager();
   const secret = process.env.AWS_SECRET;
@@ -17,7 +18,7 @@ app.set('fetchEnv', () => {
   });
 });
 
-app.set('publish', (payload, topic) => {
+slackend.app.set('publish', (payload, topic) => {
   const AWS = require('aws-sdk');
   const SNS = new AWS.SNS();
   const msg = Buffer.from(JSON.stringify(payload)).toString('base64');
@@ -26,7 +27,8 @@ app.set('publish', (payload, topic) => {
   return SNS.publish(opt).promise();
 });
 
-const server = awsServerlessExpress.createServer(app);
+slackend.app.use(baseUrl, slackend.router);
+const server = awsServerlessExpress.createServer(slackend.app);
 exports.handler = (event, context) => {
   console.log(`EVENT ${JSON.stringify(event)}`);
   return awsServerlessExpress.proxy(server, event, context);

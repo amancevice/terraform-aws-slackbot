@@ -156,10 +156,11 @@ resource aws_lambda_function lambda {
 
   environment {
     variables {
-      OAUTH_REDIRECT   = "${var.oauth_redirect}"
-      AWS_SECRET       = "${aws_secretsmanager_secret.slackbot.name}"
-      PUBLISHER_PREFIX = "${local.sns_arn_prefix}:slack_"
-      VERIFY_REQUESTS  = "${var.slack_verify_requests}"
+      AWS_SECRET        = "${aws_secretsmanager_secret.slackbot.name}"
+      OAUTH_REDIRECT    = "${var.oauth_redirect}"
+      PUBLISHER_PREFIX  = "${local.sns_arn_prefix}:slack_"
+      SLACKEND_BASE_URL = "${var.base_url}"
+      VERIFY_REQUESTS   = "${var.slack_verify_requests}"
     }
   }
 }
