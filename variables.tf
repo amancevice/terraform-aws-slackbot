@@ -39,7 +39,7 @@ variable lambda_function_name {
 
 variable lambda_memory_size {
   description = "Memory for Lambda function."
-  default     = 512
+  default     = 1024
 }
 
 variable lambda_tags {

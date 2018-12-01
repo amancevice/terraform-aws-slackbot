@@ -18,9 +18,14 @@ output api_proxy_resource_id {
   value       = "${aws_api_gateway_resource.proxy.id}"
 }
 
+output kms_key_arn {
+  description = "KMS Key ARN."
+  value       = "${aws_kms_key.key.arn}"
+}
+
 output kms_key_id {
   description = "KMS Key ID."
-  value       = "${aws_kms_key.slackbot.key_id}"
+  value       = "${aws_kms_key.key.key_id}"
 }
 
 output lambda_arn {
@@ -35,22 +40,22 @@ output lambda_name {
 
 output role_arn {
   description = "ARN of basic execution role for Slackbot lambdas."
-  value       = "${aws_iam_role.slackbot.arn}"
+  value       = "${aws_iam_role.role.arn}"
 }
 
 output role_name {
   description = "Name of basic execution role for Slackbot lambdas."
-  value       = "${aws_iam_role.slackbot.name}"
+  value       = "${aws_iam_role.role.name}"
 }
 
 output secret_arn {
   description = "Slackbot SecretsManager secret ARN."
-  value       = "${aws_secretsmanager_secret.slackbot.arn}"
+  value       = "${aws_secretsmanager_secret.secret.arn}"
 }
 
 output secret_name {
   description = "Slackbot SecretsManager secret name."
-  value       = "${aws_secretsmanager_secret.slackbot.name}"
+  value       = "${aws_secretsmanager_secret.secret.name}"
 }
 
 output secrets_policy_arn {

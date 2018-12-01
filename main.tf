@@ -38,8 +38,8 @@ data aws_iam_policy_document secrets {
   statement {
     actions   = ["kms:Decrypt", "secretsmanager:GetSecretValue"]
     resources = [
-      "${aws_kms_key.slackbot.arn}",
-      "${aws_secretsmanager_secret.slackbot.arn}",
+      "${aws_kms_key.key.arn}",
+      "${aws_secretsmanager_secret.secret.arn}",
     ]
   }
 }
@@ -106,7 +106,7 @@ resource aws_iam_policy secrets {
   policy      = "${data.aws_iam_policy_document.secrets.json}"
 }
 
-resource aws_iam_role slackbot {
+resource aws_iam_role role {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
   description        = "Slackbot resource access"
   name               = "${local.role_name}"
@@ -114,21 +114,21 @@ resource aws_iam_role slackbot {
 }
 
 resource aws_iam_role_policy_attachment cloudwatch {
-  role       = "${aws_iam_role.slackbot.name}"
+  role       = "${aws_iam_role.role.name}"
   policy_arn = "${local.lambda_policy}"
 }
 
 resource aws_iam_role_policy_attachment secrets {
-  role       = "${aws_iam_role.slackbot.name}"
+  role       = "${aws_iam_role.role.name}"
   policy_arn = "${aws_iam_policy.secrets.arn}"
 }
 
 resource aws_iam_role_policy_attachment publish {
-  role       = "${aws_iam_role.slackbot.name}"
+  role       = "${aws_iam_role.role.name}"
   policy_arn = "${aws_iam_policy.publish.arn}"
 }
 
-resource aws_kms_key slackbot {
+resource aws_kms_key key {
   description             = "${var.kms_key_name}"
   key_usage               = "${var.kms_key_usage}"
   deletion_window_in_days = "${var.kms_key_deletion_window_in_days}"
@@ -137,9 +137,9 @@ resource aws_kms_key slackbot {
   tags                    = "${var.kms_key_tags}"
 }
 
-resource aws_kms_alias slackbot {
+resource aws_kms_alias key_alias {
   name          = "${local.kms_key_alias}"
-  target_key_id = "${aws_kms_key.slackbot.key_id}"
+  target_key_id = "${aws_kms_key.key.key_id}"
 }
 
 resource aws_lambda_function lambda {
@@ -147,8 +147,9 @@ resource aws_lambda_function lambda {
   filename         = "${path.module}/package.zip"
   function_name    = "${local.function_name}"
   handler          = "index.handler"
+  kms_key_arn      = "${aws_kms_key.key.arn}"
   memory_size      = "${var.lambda_memory_size}"
-  role             = "${aws_iam_role.slackbot.arn}"
+  role             = "${aws_iam_role.role.arn}"
   runtime          = "nodejs8.10"
   source_code_hash = "${base64sha256(file("${path.module}/package.zip"))}"
   tags             = "${var.lambda_tags}"
@@ -156,7 +157,7 @@ resource aws_lambda_function lambda {
 
   environment {
     variables {
-      AWS_SECRET        = "${aws_secretsmanager_secret.slackbot.name}"
+      AWS_SECRET        = "${aws_secretsmanager_secret.secret.name}"
       OAUTH_REDIRECT    = "${var.oauth_redirect}"
       PUBLISHER_PREFIX  = "${local.sns_arn_prefix}:slack_"
       SLACKEND_BASE_URL = "${var.base_url}"
@@ -173,9 +174,9 @@ resource aws_lambda_permission invoke {
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*/*"
 }
 
-resource aws_secretsmanager_secret slackbot {
+resource aws_secretsmanager_secret secret {
   description             = "Slackbot access tokens."
-  kms_key_id              = "${aws_kms_key.slackbot.key_id}"
+  kms_key_id              = "${aws_kms_key.key.key_id}"
   name                    = "${local.secret_name}"
   recovery_window_in_days = "${var.secret_recovery_window_in_days}"
   rotation_lambda_arn     = "${var.secret_rotation_lambda_arn}"
@@ -183,7 +184,7 @@ resource aws_secretsmanager_secret slackbot {
   tags                    = "${var.secret_tags}"
 }
 
-resource aws_secretsmanager_secret_version slackbot {
-  secret_id     = "${aws_secretsmanager_secret.slackbot.id}"
+resource aws_secretsmanager_secret_version secret_version {
+  secret_id     = "${aws_secretsmanager_secret.secret.id}"
   secret_string = "${jsonencode(local.secrets)}"
 }
