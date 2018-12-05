@@ -1,11 +1,13 @@
 locals {
-  kms_key_alias  = "${coalesce(var.kms_key_alias, "alias/${var.api_name}")}"
-  function_name  = "${coalesce(var.lambda_function_name, "slack-${var.api_name}-api")}"
-  lambda_policy  = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  role_name      = "${coalesce(var.role_name, var.api_name)}"
-  role_path      = "${coalesce(var.role_path, "/slackbot/")}"
-  secret_name    = "${coalesce(var.secret_name, var.api_name)}"
-  sns_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+  function_name    = "${coalesce(var.lambda_function_name, "slack-${var.api_name}-api")}"
+  kms_key_alias    = "${coalesce(var.kms_key_alias, "alias/${var.api_name}")}"
+  lambda_policy    = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
+  role_name        = "${coalesce(var.role_name, var.api_name)}"
+  role_path        = "${coalesce(var.role_path, "/slackbot/")}"
+  secret_name      = "${coalesce(var.secret_name, "slack/${var.api_name}")}"
+  topic_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
+  topic_prefix     = "slack_${var.api_name}_"
 
   secrets {
     BOT_ACCESS_TOKEN  = "${var.slack_bot_access_token}"
@@ -47,7 +49,7 @@ data aws_iam_policy_document secrets {
 data aws_iam_policy_document publish {
   statement {
     actions   = ["sns:Publish"]
-    resources = ["${local.sns_arn_prefix}:slack_*"]
+    resources = ["${local.publisher_prefix}*"]
   }
 }
 
@@ -159,7 +161,7 @@ resource aws_lambda_function lambda {
     variables {
       AWS_SECRET        = "${aws_secretsmanager_secret.secret.name}"
       OAUTH_REDIRECT    = "${var.oauth_redirect}"
-      PUBLISHER_PREFIX  = "${local.sns_arn_prefix}:slack_"
+      PUBLISHER_PREFIX  = "${local.publisher_prefix}"
       SLACKEND_BASE_URL = "${var.base_url}"
       VERIFY_REQUESTS   = "${var.slack_verify_requests}"
     }
