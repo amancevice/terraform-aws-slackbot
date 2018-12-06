@@ -1,13 +1,12 @@
 locals {
   function_name    = "${coalesce(var.lambda_function_name, "slack-${var.api_name}-api")}"
-  kms_key_alias    = "${coalesce(var.kms_key_alias, "alias/${var.api_name}")}"
-  lambda_policy    = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-  publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
-  role_name        = "${coalesce(var.role_name, var.api_name)}"
-  role_path        = "${coalesce(var.role_path, "/slackbot/")}"
+  kms_key_alias    = "${coalesce(var.kms_key_alias, "alias/slack/${var.api_name}")}"
+  role_name        = "${coalesce(var.role_name, "slack-${var.api_name}")}"
   secret_name      = "${coalesce(var.secret_name, "slack/${var.api_name}")}"
+
   topic_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
   topic_prefix     = "slack_${var.api_name}_"
+  publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
 
   secrets {
     BOT_ACCESS_TOKEN  = "${var.slack_bot_access_token}"
@@ -36,25 +35,40 @@ data aws_iam_policy_document assume_role {
   }
 }
 
-data aws_iam_policy_document secrets {
+data aws_iam_policy_document inline {
   statement {
-    actions   = ["kms:Decrypt", "secretsmanager:GetSecretValue"]
-    resources = [
-      "${aws_kms_key.key.arn}",
-      "${aws_secretsmanager_secret.secret.arn}",
-    ]
+    sid       = "PublishSlackEvents"
+    actions   = ["sns:Publish"]
+    resources = ["${local.publisher_prefix}*"]
+  }
+
+  statement {
+    sid       = "WriteLambdaLogs"
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = ["*"]
   }
 }
 
-data aws_iam_policy_document publish {
+data aws_iam_policy_document secrets {
   statement {
-    actions   = ["sns:Publish"]
-    resources = ["${local.publisher_prefix}*"]
+    sid       = "DecryptSlackSecret"
+    actions   = ["kms:Decrypt"]
+    resources = ["${aws_kms_key.key.arn}"]
+  }
+
+  statement {
+    sid       = "GetSlackSecretValue"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = ["${aws_secretsmanager_secret.secret.arn}"]
   }
 }
 
 resource aws_api_gateway_deployment api {
-  depends_on  = ["aws_api_gateway_integration.proxy_any"]
+  depends_on  = [
+    "aws_api_gateway_integration.proxy_any",
+    "aws_api_gateway_method.any",
+    "aws_api_gateway_resource.proxy",
+  ]
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${var.api_stage_name}"
 }
@@ -94,17 +108,10 @@ resource aws_cloudwatch_log_group logs {
   retention_in_days = "${var.cloudwatch_log_group_retention_in_days}"
 }
 
-resource aws_iam_policy publish {
-  name        = "slack-${var.api_name}-publish"
-  path        = "${local.role_path}"
-  description = "Publish Slackbot callbacks"
-  policy      = "${data.aws_iam_policy_document.publish.json}"
-}
-
 resource aws_iam_policy secrets {
-  name        = "slack-${var.api_name}-decrypt-secrets"
-  path        = "${local.role_path}"
-  description = "Decrypt Slackbot SecretsManager secret"
+  name        = "${aws_iam_role.role.name}-get-secrets"
+  path        = "${var.role_path}"
+  description = "Get Slackbot SecretsManager secret value"
   policy      = "${data.aws_iam_policy_document.secrets.json}"
 }
 
@@ -112,12 +119,13 @@ resource aws_iam_role role {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
   description        = "Slackbot resource access"
   name               = "${local.role_name}"
-  path               = "${local.role_path}"
+  path               = "${var.role_path}"
 }
 
-resource aws_iam_role_policy_attachment cloudwatch {
-  role       = "${aws_iam_role.role.name}"
-  policy_arn = "${local.lambda_policy}"
+resource aws_iam_role_policy inline {
+  name        = "${aws_iam_role.role.name}-lambda"
+  role        = "${aws_iam_role.role.id}"
+  policy      = "${data.aws_iam_policy_document.inline.json}"
 }
 
 resource aws_iam_role_policy_attachment secrets {
@@ -125,17 +133,19 @@ resource aws_iam_role_policy_attachment secrets {
   policy_arn = "${aws_iam_policy.secrets.arn}"
 }
 
-resource aws_iam_role_policy_attachment publish {
+resource aws_iam_role_policy_attachment additional_policies {
+  count      = "${length(var.role_policy_attachments)}"
   role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.publish.arn}"
+  policy_arn = "${element(var.role_policy_attachments, count.index)}"
 }
 
 resource aws_kms_key key {
-  description             = "${var.kms_key_name}"
-  key_usage               = "${var.kms_key_usage}"
   deletion_window_in_days = "${var.kms_key_deletion_window_in_days}"
-  is_enabled              = "${var.kms_key_is_enabled}"
+  description             = "${var.kms_key_name}"
   enable_key_rotation     = "${var.kms_key_enable_key_rotation}"
+  is_enabled              = "${var.kms_key_is_enabled}"
+  key_usage               = "${var.kms_key_usage}"
+  policy                  = "${var.kms_key_policy}"
   tags                    = "${var.kms_key_tags}"
 }
 

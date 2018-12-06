@@ -83,6 +83,11 @@ variable kms_key_name {
   default     = "Slackbot key"
 }
 
+variable kms_key_policy {
+  description = "KMS key policy JSON document."
+  default     = ""
+}
+
 variable kms_key_tags {
   description = "KMS Key tags."
   default     = {}
@@ -100,7 +105,13 @@ variable role_name {
 
 variable role_path {
   description = "Path for Slackbot role."
-  default     = ""
+  default     = "/"
+}
+
+variable role_policy_attachments {
+  description = "Additional role policy ARNs to attach to role."
+  type        = "list"
+  default     = []
 }
 
 variable secret_name {
