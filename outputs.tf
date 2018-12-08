@@ -38,6 +38,21 @@ output lambda_name {
   value       = "${aws_lambda_function.lambda.function_name}"
 }
 
+output post_message_topic_arn {
+  description = "SNS Topic ARN for posting messages."
+  value       = "${aws_sns_topic.post_message.arn}"
+}
+
+output post_ephemeral_topic_arn {
+  description = "SNS Topic ARN for posting ephemeral messages."
+  value       = "${aws_sns_topic.post_ephemeral.arn}"
+}
+
+output publish_policy_arn {
+  description = "Slackbot SNS permission policy ARN."
+  value       = "${aws_iam_policy.publish.arn}"
+}
+
 output role_arn {
   description = "ARN of basic execution role for Slackbot lambdas."
   value       = "${aws_iam_role.role.arn}"

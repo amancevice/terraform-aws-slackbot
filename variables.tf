@@ -156,6 +156,11 @@ variable slack_client_secret {
   default     = ""
 }
 
+variable slack_default_channel {
+  description = "Slack default channel ID."
+  default     = ""
+}
+
 variable slack_signing_secret {
   description = "Slack signing secret."
 }

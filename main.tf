@@ -16,6 +16,12 @@ locals {
     SIGNING_VERSION   = "${var.slack_signing_version}"
     USER_ACCESS_TOKEN = "${var.slack_user_access_token}"
   }
+
+  function_names = [
+    "${aws_lambda_function.lambda.function_name}",
+    "${aws_lambda_function.post_message.function_name}",
+    "${aws_lambda_function.post_ephemeral.function_name}",
+  ]
 }
 
 data aws_caller_identity current {
@@ -46,6 +52,17 @@ data aws_iam_policy_document inline {
     sid       = "WriteLambdaLogs"
     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["*"]
+  }
+}
+
+data aws_iam_policy_document publish {
+  statement {
+    sid       = "PublishSlackMessagesViaSns"
+    actions   = ["sns:Publish"]
+    resources = [
+      "${aws_sns_topic.post_message.arn}",
+      "${aws_sns_topic.post_ephemeral.arn}",
+    ]
   }
 }
 
@@ -104,8 +121,16 @@ resource aws_api_gateway_rest_api api {
 }
 
 resource aws_cloudwatch_log_group logs {
-  name              = "/aws/lambda/${aws_lambda_function.lambda.function_name}"
+  count             = "${length(local.function_names)}"
+  name              = "/aws/lambda/${element(local.function_names, count.index)}"
   retention_in_days = "${var.cloudwatch_log_group_retention_in_days}"
+}
+
+resource aws_iam_policy publish {
+  name        = "${aws_iam_role.role.name}-publish-sns"
+  path        = "${var.role_path}"
+  description = "Publish Slack messages via SNS"
+  policy      = "${data.aws_iam_policy_document.publish.json}"
 }
 
 resource aws_iam_policy secrets {
@@ -126,6 +151,11 @@ resource aws_iam_role_policy inline {
   name        = "${aws_iam_role.role.name}-lambda"
   role        = "${aws_iam_role.role.id}"
   policy      = "${data.aws_iam_policy_document.inline.json}"
+}
+
+resource aws_iam_role_policy_attachment publish {
+  role       = "${aws_iam_role.role.name}"
+  policy_arn = "${aws_iam_policy.publish.arn}"
 }
 
 resource aws_iam_role_policy_attachment secrets {
@@ -178,12 +208,68 @@ resource aws_lambda_function lambda {
   }
 }
 
+resource aws_lambda_function post_message {
+  description      = "Post Slack message via SNS"
+  filename         = "${path.module}/package.zip"
+  function_name    = "${local.function_name}-post-message"
+  handler          = "index.postMessage"
+  kms_key_arn      = "${aws_kms_key.key.arn}"
+  role             = "${aws_iam_role.role.arn}"
+  runtime          = "nodejs8.10"
+  source_code_hash = "${base64sha256(file("${path.module}/package.zip"))}"
+  tags             = "${var.lambda_tags}"
+  timeout          = 15
+
+  environment {
+    variables {
+      AWS_SECRET      = "${aws_secretsmanager_secret.secret.name}"
+      DEFAULT_CHANNEL = "${var.slack_default_channel}"
+    }
+  }
+}
+
+resource aws_lambda_function post_ephemeral {
+  description      = "Post Slack ephemeral message via SNS"
+  filename         = "${path.module}/package.zip"
+  function_name    = "${local.function_name}-post-ephemeral"
+  handler          = "index.postEphemeral"
+  kms_key_arn      = "${aws_kms_key.key.arn}"
+  role             = "${aws_iam_role.role.arn}"
+  runtime          = "nodejs8.10"
+  source_code_hash = "${base64sha256(file("${path.module}/package.zip"))}"
+  tags             = "${var.lambda_tags}"
+  timeout          = 15
+
+  environment {
+    variables {
+      AWS_SECRET      = "${aws_secretsmanager_secret.secret.name}"
+      DEFAULT_CHANNEL = "${var.slack_default_channel}"
+    }
+  }
+}
+
 resource aws_lambda_permission invoke {
   action        = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.lambda.arn}"
   principal     = "apigateway.amazonaws.com"
   statement_id  = "AllowAPIGatewayInvoke"
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*/*"
+}
+
+resource aws_lambda_permission invoke_post_message {
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.post_message.function_name}"
+  principal     = "sns.amazonaws.com"
+  source_arn    = "${aws_sns_topic.post_message.arn}"
+  statement_id  = "AllowSNSInvoke"
+}
+
+resource aws_lambda_permission invoke_post_ephemeral {
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.post_ephemeral.function_name}"
+  principal     = "sns.amazonaws.com"
+  source_arn    = "${aws_sns_topic.post_ephemeral.arn}"
+  statement_id  = "AllowSNSInvoke"
 }
 
 resource aws_secretsmanager_secret secret {
@@ -199,4 +285,24 @@ resource aws_secretsmanager_secret secret {
 resource aws_secretsmanager_secret_version secret_version {
   secret_id     = "${aws_secretsmanager_secret.secret.id}"
   secret_string = "${jsonencode(local.secrets)}"
+}
+
+resource aws_sns_topic post_message {
+  name = "slack_${var.api_name}_post_message"
+}
+
+resource aws_sns_topic post_ephemeral {
+  name = "slack_${var.api_name}_post_ephemeral"
+}
+
+resource aws_sns_topic_subscription post_message_subscription {
+  endpoint  = "${aws_lambda_function.post_message.arn}"
+  protocol  = "lambda"
+  topic_arn = "${aws_sns_topic.post_message.arn}"
+}
+
+resource aws_sns_topic_subscription post_ephemeral_subscription {
+  endpoint  = "${aws_lambda_function.post_ephemeral.arn}"
+  protocol  = "lambda"
+  topic_arn = "${aws_sns_topic.post_ephemeral.arn}"
 }

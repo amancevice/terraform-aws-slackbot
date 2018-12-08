@@ -3,8 +3,8 @@ services:
   package:
     command: >-
       sh -c "
-        rm -rf node_modules &&
-        npm install --production &&
+        rm -rf node_modules
+        npm install --production
         zip -r package.zip node_modules/ index.js package.json package-lock.json
       "
     image: lambci/lambda:build-nodejs8.10
