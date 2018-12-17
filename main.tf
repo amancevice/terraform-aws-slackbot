@@ -18,7 +18,7 @@ locals {
   }
 
   function_names = [
-    "${aws_lambda_function.lambda.function_name}",
+    "${aws_lambda_function.api.function_name}",
     "${aws_lambda_function.post_message.function_name}",
     "${aws_lambda_function.post_ephemeral.function_name}",
   ]
@@ -41,42 +41,33 @@ data aws_iam_policy_document assume_role {
   }
 }
 
-data aws_iam_policy_document inline {
+data aws_iam_policy_document api {
   statement {
-    sid       = "PublishSlackEvents"
+    sid       = "DecryptKmsKey"
+    actions   = ["kms:Decrypt"]
+    resources = ["${aws_kms_key.key.arn}"]
+  }
+
+  statement {
+    sid       = "GetSecretValue"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = ["${aws_secretsmanager_secret.slack_secret.arn}"]
+  }
+
+  statement {
+    sid       = "PublishEvents"
     actions   = ["sns:Publish"]
     resources = ["${local.publisher_prefix}*"]
   }
 
   statement {
     sid       = "WriteLambdaLogs"
-    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-    resources = ["*"]
-  }
-}
-
-data aws_iam_policy_document publish {
-  statement {
-    sid       = "PublishSlackMessagesViaSns"
-    actions   = ["sns:Publish"]
-    resources = [
-      "${aws_sns_topic.post_message.arn}",
-      "${aws_sns_topic.post_ephemeral.arn}",
+    actions   = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
     ]
-  }
-}
-
-data aws_iam_policy_document secrets {
-  statement {
-    sid       = "DecryptSlackSecret"
-    actions   = ["kms:Decrypt"]
-    resources = ["${aws_kms_key.key.arn}"]
-  }
-
-  statement {
-    sid       = "GetSlackSecretValue"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = ["${aws_secretsmanager_secret.secret.arn}"]
+    resources = ["*"]
   }
 }
 
@@ -98,7 +89,7 @@ resource aws_api_gateway_integration proxy_any {
   rest_api_id             = "${aws_api_gateway_rest_api.api.id}"
   timeout_milliseconds    = 3000
   type                    = "AWS_PROXY"
-  uri                     = "${aws_lambda_function.lambda.invoke_arn}"
+  uri                     = "${aws_lambda_function.api.invoke_arn}"
 }
 
 resource aws_api_gateway_method any {
@@ -126,20 +117,6 @@ resource aws_cloudwatch_log_group logs {
   retention_in_days = "${var.cloudwatch_log_group_retention_in_days}"
 }
 
-resource aws_iam_policy publish {
-  name        = "${aws_iam_role.role.name}-publish-sns"
-  path        = "${var.role_path}"
-  description = "Publish Slack messages via SNS"
-  policy      = "${data.aws_iam_policy_document.publish.json}"
-}
-
-resource aws_iam_policy secrets {
-  name        = "${aws_iam_role.role.name}-get-secrets"
-  path        = "${var.role_path}"
-  description = "Get Slackbot SecretsManager secret value"
-  policy      = "${data.aws_iam_policy_document.secrets.json}"
-}
-
 resource aws_iam_role role {
   assume_role_policy = "${data.aws_iam_policy_document.assume_role.json}"
   description        = "Slackbot resource access"
@@ -147,20 +124,10 @@ resource aws_iam_role role {
   path               = "${var.role_path}"
 }
 
-resource aws_iam_role_policy inline {
-  name        = "${aws_iam_role.role.name}-lambda"
+resource aws_iam_role_policy api {
+  name        = "api"
   role        = "${aws_iam_role.role.id}"
-  policy      = "${data.aws_iam_policy_document.inline.json}"
-}
-
-resource aws_iam_role_policy_attachment publish {
-  role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.publish.arn}"
-}
-
-resource aws_iam_role_policy_attachment secrets {
-  role       = "${aws_iam_role.role.name}"
-  policy_arn = "${aws_iam_policy.secrets.arn}"
+  policy      = "${data.aws_iam_policy_document.api.json}"
 }
 
 resource aws_iam_role_policy_attachment additional_policies {
@@ -184,7 +151,7 @@ resource aws_kms_alias key_alias {
   target_key_id = "${aws_kms_key.key.key_id}"
 }
 
-resource aws_lambda_function lambda {
+resource aws_lambda_function api {
   description      = "Slack request handler"
   filename         = "${path.module}/package.zip"
   function_name    = "${local.function_name}"
@@ -199,10 +166,10 @@ resource aws_lambda_function lambda {
 
   environment {
     variables {
-      AWS_SECRET        = "${aws_secretsmanager_secret.secret.name}"
       OAUTH_REDIRECT    = "${var.oauth_redirect}"
       PUBLISHER_PREFIX  = "${local.publisher_prefix}"
       SLACKEND_BASE_URL = "${var.base_url}"
+      SLACK_SECRET      = "${aws_secretsmanager_secret.slack_secret.name}"
       VERIFY_REQUESTS   = "${var.slack_verify_requests}"
     }
   }
@@ -222,8 +189,7 @@ resource aws_lambda_function post_message {
 
   environment {
     variables {
-      AWS_SECRET      = "${aws_secretsmanager_secret.secret.name}"
-      DEFAULT_CHANNEL = "${var.slack_default_channel}"
+      SLACK_SECRET = "${aws_secretsmanager_secret.slack_secret.name}"
     }
   }
 }
@@ -242,17 +208,15 @@ resource aws_lambda_function post_ephemeral {
 
   environment {
     variables {
-      AWS_SECRET      = "${aws_secretsmanager_secret.secret.name}"
-      DEFAULT_CHANNEL = "${var.slack_default_channel}"
+      SLACK_SECRET = "${aws_secretsmanager_secret.slack_secret.name}"
     }
   }
 }
 
-resource aws_lambda_permission invoke {
+resource aws_lambda_permission invoke_api {
   action        = "lambda:InvokeFunction"
-  function_name = "${aws_lambda_function.lambda.arn}"
+  function_name = "${aws_lambda_function.api.arn}"
   principal     = "apigateway.amazonaws.com"
-  statement_id  = "AllowAPIGatewayInvoke"
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*/*"
 }
 
@@ -261,7 +225,6 @@ resource aws_lambda_permission invoke_post_message {
   function_name = "${aws_lambda_function.post_message.function_name}"
   principal     = "sns.amazonaws.com"
   source_arn    = "${aws_sns_topic.post_message.arn}"
-  statement_id  = "AllowSNSInvoke"
 }
 
 resource aws_lambda_permission invoke_post_ephemeral {
@@ -269,10 +232,9 @@ resource aws_lambda_permission invoke_post_ephemeral {
   function_name = "${aws_lambda_function.post_ephemeral.function_name}"
   principal     = "sns.amazonaws.com"
   source_arn    = "${aws_sns_topic.post_ephemeral.arn}"
-  statement_id  = "AllowSNSInvoke"
 }
 
-resource aws_secretsmanager_secret secret {
+resource aws_secretsmanager_secret slack_secret {
   description             = "Slackbot access tokens."
   kms_key_id              = "${aws_kms_key.key.key_id}"
   name                    = "${local.secret_name}"
@@ -282,8 +244,8 @@ resource aws_secretsmanager_secret secret {
   tags                    = "${var.secret_tags}"
 }
 
-resource aws_secretsmanager_secret_version secret_version {
-  secret_id     = "${aws_secretsmanager_secret.secret.id}"
+resource aws_secretsmanager_secret_version slack_secret_version {
+  secret_id     = "${aws_secretsmanager_secret.slack_secret.id}"
   secret_string = "${jsonencode(local.secrets)}"
 }
 
