@@ -8,7 +8,7 @@ let env;
 function fetchEnv () {
   const AWS = require('aws-sdk');
   const secretsmanager = new AWS.SecretsManager();
-  const secret = process.env.AWS_SECRET;
+  const secret = process.env.SLACK_SECRET;
   return secretsmanager.getSecretValue({
     SecretId: secret,
   }).promise().then((data) => {
@@ -48,7 +48,6 @@ async function postMessage (event) {
   const slack = new WebClient(env.BOT_ACCESS_TOKEN);
   await Promise.all(event.Records.map((record) => {
     const msg = JSON.parse(record.Sns.Message);
-    msg.channel = msg.channel || env.DEFAULT_CHANNEL;
     console.log(`POST ${JSON.stringify(msg)}`);
     return slack.chat.postMessage(msg);
   }));
@@ -60,7 +59,6 @@ async function postEphemeral (event) {
   const slack = new WebClient(env.BOT_ACCESS_TOKEN);
   await Promise.all(event.Records.map((record) => {
     const msg = JSON.parse(record.Sns.Message);
-    msg.channel = msg.channel || env.DEFAULT_CHANNEL;
     console.log(`POST ${JSON.stringify(msg)}`);
     return slack.chat.postEphemeral(msg);
   }));
