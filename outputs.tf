@@ -37,3 +37,13 @@ output slack_secret_name {
   description = "Slackbot SecretsManager secret name."
   value       = "${aws_secretsmanager_secret.slack_secret.name}"
 }
+
+output slack_post_message_topic_arn {
+  description = "Slackbot post message SNS topic ARN."
+  value       = "${aws_sns_topic.post_message.arn}"
+}
+
+output slack_post_ephemeral_topic_arn {
+  description = "Slackbot post ephemeral SNS topic ARN."
+  value       = "${aws_sns_topic.post_ephemeral.arn}"
+}
