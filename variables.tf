@@ -175,7 +175,7 @@ variable slack_user_access_token {
   default     = ""
 }
 
-variable slack_verify_requests {
+variable verify_requests {
   description = "Verify Slack requests using signing secret."
   default     = true
 }

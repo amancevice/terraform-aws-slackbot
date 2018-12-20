@@ -28,22 +28,22 @@ output role_name {
   value       = "${aws_iam_role.role.name}"
 }
 
-output slack_secret_arn {
+output secret_arn {
   description = "Slackbot SecretsManager secret ARN."
   value       = "${aws_secretsmanager_secret.slack_secret.arn}"
 }
 
-output slack_secret_name {
+output secret_name {
   description = "Slackbot SecretsManager secret name."
   value       = "${aws_secretsmanager_secret.slack_secret.name}"
 }
 
-output slack_post_message_topic_arn {
+output post_message_topic_arn {
   description = "Slackbot post message SNS topic ARN."
   value       = "${aws_sns_topic.post_message.arn}"
 }
 
-output slack_post_ephemeral_topic_arn {
+output post_ephemeral_topic_arn {
   description = "Slackbot post ephemeral SNS topic ARN."
   value       = "${aws_sns_topic.post_ephemeral.arn}"
 }

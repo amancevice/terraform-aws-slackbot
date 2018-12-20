@@ -170,7 +170,7 @@ resource aws_lambda_function api {
       PUBLISHER_PREFIX  = "${local.publisher_prefix}"
       SLACKEND_BASE_URL = "${var.base_url}"
       SLACK_SECRET      = "${aws_secretsmanager_secret.slack_secret.name}"
-      VERIFY_REQUESTS   = "${var.slack_verify_requests}"
+      VERIFY_REQUESTS   = "${var.verify_requests}"
     }
   }
 }
