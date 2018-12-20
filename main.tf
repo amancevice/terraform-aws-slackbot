@@ -235,7 +235,7 @@ resource aws_lambda_permission invoke_post_ephemeral {
 }
 
 resource aws_secretsmanager_secret slack_secret {
-  description             = "Slackbot access tokens."
+  description             = "Slackbot secrets"
   kms_key_id              = "${aws_kms_key.key.key_id}"
   name                    = "${local.secret_name}"
   recovery_window_in_days = "${var.secret_recovery_window_in_days}"
