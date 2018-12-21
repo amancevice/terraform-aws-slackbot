@@ -4,8 +4,13 @@ output api_id {
 }
 
 output api_name {
-  description = "REST API Name."
+  description = "REST API name."
   value       = "${aws_api_gateway_rest_api.api.name}"
+}
+
+output api_stage_name {
+  description = "REST API stage name."
+  value       = "${aws_api_gateway_deployment.api.stage_name}"
 }
 
 output kms_key_arn {
@@ -14,12 +19,12 @@ output kms_key_arn {
 }
 
 output role_arn {
-  description = "ARN of basic execution role for Slackbot lambdas."
+  description = "Lambda function role ARN."
   value       = "${aws_iam_role.role.arn}"
 }
 
 output role_name {
-  description = "Name of basic execution role for Slackbot lambdas."
+  description = "Lambda function role name."
   value       = "${aws_iam_role.role.name}"
 }
 
