@@ -9,13 +9,8 @@ output api_name {
 }
 
 output kms_key_arn {
-  description = "KMS Key ARN."
-  value       = "${aws_kms_key.key.arn}"
-}
-
-output kms_key_id {
-  description = "KMS Key ID."
-  value       = "${aws_kms_key.key.key_id}"
+  description = "KMS key ARN."
+  value       = "${data.aws_kms_key.key.arn}"
 }
 
 output role_arn {
@@ -28,14 +23,9 @@ output role_name {
   value       = "${aws_iam_role.role.name}"
 }
 
-output secret_arn {
-  description = "Slackbot SecretsManager secret ARN."
-  value       = "${aws_secretsmanager_secret.slack_secret.arn}"
-}
-
 output secret_name {
-  description = "Slackbot SecretsManager secret name."
-  value       = "${aws_secretsmanager_secret.slack_secret.name}"
+  description = "SecretsManager secret name."
+  value       = "${data.aws_secretsmanager_secret.secret.name}"
 }
 
 output post_message_topic_arn {

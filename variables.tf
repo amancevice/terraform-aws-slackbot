@@ -58,44 +58,8 @@ variable oauth_redirect {
   default     = ""
 }
 
-variable kms_key_alias {
-  description = "KMS Key alias."
-  default     = ""
-}
-
-variable kms_key_deletion_window_in_days {
-  description = "KMS key deletion window."
-  default     = 30
-}
-
-variable kms_key_enable_key_rotation {
-  description = "Flag to enable/disable KMS Key rotation."
-  default     = false
-}
-
-variable kms_key_is_enabled {
-  description = "Flag to enable/disable KMS Key."
-  default     = true
-}
-
-variable kms_key_name {
-  description = "Name of Slackbot KMS Key."
-  default     = "Slackbot key"
-}
-
-variable kms_key_policy {
-  description = "KMS key policy JSON document."
-  default     = ""
-}
-
-variable kms_key_tags {
-  description = "KMS Key tags."
-  default     = {}
-}
-
-variable kms_key_usage {
-  description = "Usage of Slackbot KMS Key."
-  default     = "ENCRYPT_DECRYPT"
+variable kms_key_id {
+  description = "KMS key ID."
 }
 
 variable role_name {
@@ -114,65 +78,8 @@ variable role_policy_attachments {
   default     = []
 }
 
-variable secret_name {
-  description = "Name of secret."
-  default     = ""
-}
-
-variable secret_recovery_window_in_days {
-  description = "Recovery window for secret."
-  default     = 30
-}
-
-variable secret_rotation_lambda_arn {
-  description = "ARN of Lambda with permission to rotate permission."
-  default     = ""
-}
-
-variable secret_rotation_rules {
-  description = "Rotation configuration for secret."
-  type        = "list"
-  default     = []
-}
-
-variable secret_tags {
-  description = "Secret tags"
-  type        = "map"
-  default     = {}
-}
-
-variable slack_bot_access_token {
-  description = "Slack OAuth bot access token."
-  default     = ""
-}
-
-variable slack_client_id {
-  description = "Slack Client ID."
-  default     = ""
-}
-
-variable slack_client_secret {
-  description = "Slack Client Secret."
-  default     = ""
-}
-
-variable slack_default_channel {
-  description = "Slack default channel ID."
-  default     = ""
-}
-
-variable slack_signing_secret {
-  description = "Slack signing secret."
-}
-
-variable slack_signing_version {
-  description = "Slack signing version."
-  default     = "v0"
-}
-
-variable slack_user_access_token {
-  description = "Slack OAuth user access token."
-  default     = ""
+variable secret_arn {
+  description = "SecretsManager secret ARN."
 }
 
 variable verify_requests {
