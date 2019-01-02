@@ -18,7 +18,7 @@ OAuth requests are authenticated using the Slack client and redirected to the co
 
 The module is quite configurable, but a very basic setup will do the trick.
 
-_Note: as of v9.0.0, Slack secrets are broken out into a [separate dependent module](https://github.com/amancevice/terraform-aws-slackbot-secrets)_
+_Note &mdash; as of v9.0.0, Slack secrets are broken out into a [separate dependent module](https://github.com/amancevice/terraform-aws-slackbot-secrets)_
 
 ```hcl
 module slackbot_secrets {
