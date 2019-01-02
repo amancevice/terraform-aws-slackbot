@@ -45,7 +45,7 @@ function publish (payload, topic) {
 async function postMessage (event) {
   await getEnv();
   const { WebClient } = require('@slack/client');
-  const slack = new WebClient(env.BOT_ACCESS_TOKEN);
+  const slack = new WebClient(env.BOT_TOKEN);
   await Promise.all(event.Records.map((record) => {
     const msg = JSON.parse(record.Sns.Message);
     console.log(`POST ${JSON.stringify(msg)}`);
@@ -56,7 +56,7 @@ async function postMessage (event) {
 async function postEphemeral (event) {
   await getEnv();
   const { WebClient } = require('@slack/client');
-  const slack = new WebClient(env.BOT_ACCESS_TOKEN);
+  const slack = new WebClient(env.BOT_TOKEN);
   await Promise.all(event.Records.map((record) => {
     const msg = JSON.parse(record.Sns.Message);
     console.log(`POST ${JSON.stringify(msg)}`);
