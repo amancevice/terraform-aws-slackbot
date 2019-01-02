@@ -1,5 +1,5 @@
-variable slack_bot_access_token {
-  description = "Slack OAuth bot access token."
+variable slack_bot_token {
+  description = "Slack bot OAuth token."
 }
 
 variable slack_client_id {
@@ -14,6 +14,6 @@ variable slack_signing_secret {
   description = "Slack signing secret."
 }
 
-variable slack_user_access_token {
-  description = "Slack OAuth user access token."
+variable slack_user_token {
+  description = "Slack user OAuth token."
 }
