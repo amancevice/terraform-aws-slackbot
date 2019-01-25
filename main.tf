@@ -109,7 +109,8 @@ resource aws_api_gateway_rest_api api {
 resource aws_cloudwatch_log_group logs {
   count             = "${length(local.function_names)}"
   name              = "/aws/lambda/${element(local.function_names, count.index)}"
-  retention_in_days = "${var.cloudwatch_log_group_retention_in_days}"
+  retention_in_days = "${var.log_group_retention_in_days}"
+  tags              = "${var.log_group_tags}"
 }
 
 resource aws_iam_role role {
@@ -117,6 +118,7 @@ resource aws_iam_role role {
   description        = "Slackbot resource access"
   name               = "${local.role_name}"
   path               = "${var.role_path}"
+  tags               = "${var.role_tags}"
 }
 
 resource aws_iam_role_policy api {

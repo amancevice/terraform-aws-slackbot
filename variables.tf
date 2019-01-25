@@ -27,11 +27,6 @@ variable base_url {
   default     = "/"
 }
 
-variable cloudwatch_log_group_retention_in_days {
-  description = "Days to retain logs in CloudWatch."
-  default     = 30
-}
-
 variable lambda_function_name {
   description = "Lambda Function for publishing events from Slack to SNS."
   default     = ""
@@ -43,7 +38,7 @@ variable lambda_memory_size {
 }
 
 variable lambda_tags {
-  description = "A set of key/value label pairs to assign to the function."
+  description = "AWS resource tags."
   type        = "map"
   default     = {}
 }
@@ -51,6 +46,17 @@ variable lambda_tags {
 variable lambda_timeout {
   description = "Timeout in seconds for Lambda function."
   default     = 3
+}
+
+variable log_group_retention_in_days {
+  description = "Days to retain logs in CloudWatch."
+  default     = 30
+}
+
+variable log_group_tags {
+  description = "AWS resource tags."
+  type        = "map"
+  default     = {}
 }
 
 variable oauth_redirect {
@@ -76,6 +82,12 @@ variable role_policy_attachments {
   description = "Additional role policy ARNs to attach to role."
   type        = "list"
   default     = []
+}
+
+variable role_tags {
+  description = "AWS resource tags."
+  type        = "map"
+  default     = {}
 }
 
 variable secret_arn {
