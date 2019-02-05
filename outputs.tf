@@ -28,9 +28,24 @@ output role_name {
   value       = "${aws_iam_role.role.name}"
 }
 
+output secret_arn {
+  description = "SecretsManager secret ARN."
+  value       = "${data.aws_secretsmanager_secret.secret.arn}"
+}
+
 output secret_name {
   description = "SecretsManager secret name."
   value       = "${data.aws_secretsmanager_secret.secret.name}"
+}
+
+output oauth_topic_arn {
+  description = "Slackbot OAuth SNS topic ARN."
+  value       = "${aws_sns_topic.oauth.arn}"
+}
+
+output oauth_topic_name {
+  description = "Slackbot OAuth SNS topic name."
+  value       = "${aws_sns_topic.oauth.name}"
 }
 
 output post_message_topic_arn {
@@ -38,7 +53,17 @@ output post_message_topic_arn {
   value       = "${aws_sns_topic.post_message.arn}"
 }
 
+output post_message_topic_name {
+  description = "Slackbot post message SNS topic name."
+  value       = "${aws_sns_topic.post_message.name}"
+}
+
 output post_ephemeral_topic_arn {
   description = "Slackbot post ephemeral SNS topic ARN."
   value       = "${aws_sns_topic.post_ephemeral.arn}"
+}
+
+output post_ephemeral_topic_name {
+  description = "Slackbot post ephemeral SNS topic name."
+  value       = "${aws_sns_topic.post_ephemeral.name}"
 }
