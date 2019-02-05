@@ -216,6 +216,10 @@ resource aws_lambda_permission invoke_post_ephemeral {
   source_arn    = "${aws_sns_topic.post_ephemeral.arn}"
 }
 
+resource aws_sns_topic oauth {
+  name = "slack_${var.api_name}_oauth"
+}
+
 resource aws_sns_topic post_message {
   name = "slack_${var.api_name}_post_message"
 }
