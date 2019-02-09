@@ -10,16 +10,16 @@ locals {
 }
 
 module slackbot_secret {
-  source               = "amancevice/slackbot-secrets/aws"
-  kms_key_alias        = "alias/slack/bot"
-  kms_key_tags         = "${local.tags}"
-  secret_name          = "slack/bot"
-  secret_tags          = "${local.tags}"
-  slack_bot_token      = "${var.slack_bot_token}"
-  slack_client_id      = "${var.slack_client_id}"
-  slack_client_secret  = "${var.slack_client_secret}"
-  slack_signing_secret = "${var.slack_signing_secret}"
-  slack_user_token     = "${var.slack_user_token}"
+  source                   = "amancevice/slackbot-secrets/aws"
+  kms_key_alias            = "alias/slack/bot"
+  kms_key_tags             = "${local.tags}"
+  secret_name              = "slack/bot"
+  secret_tags              = "${local.tags}"
+  slack_client_id          = "${var.slack_client_id}"
+  slack_client_secret      = "${var.slack_client_secret}"
+  slack_signing_secret     = "${var.slack_signing_secret}"
+  slack_token              = "${var.slack_token}"
+  slack_oauth_redirect_uri = "${var.slack_oauth_redirect_uri}"
 }
 
 module slackbot {
@@ -30,4 +30,5 @@ module slackbot {
   lambda_tags     = "${local.tags}"
   log_group_tags  = "${local.tags}"
   role_tags       = "${local.tags}"
+  secret_name     = "${module.slackbot_secret.secret_name}"
 }

@@ -4,7 +4,7 @@ variable api_description {
 }
 
 variable api_name {
-  description = "Slackbot API name"
+  description = "Slackbot API name."
   default     = "slackbot"
 }
 
@@ -25,6 +25,11 @@ variable api_endpoint_configuration {
 variable base_url {
   description = "Base URL for handling slackend requests."
   default     = "/"
+}
+
+variable debug {
+  description = "Debug log string."
+  default     = "slackend:*"
 }
 
 variable lambda_function_name {
@@ -59,11 +64,6 @@ variable log_group_tags {
   default     = {}
 }
 
-variable oauth_redirect {
-  description = "OAuth redirect URL."
-  default     = ""
-}
-
 variable kms_key_id {
   description = "KMS key ID."
 }
@@ -90,11 +90,6 @@ variable role_tags {
   default     = {}
 }
 
-variable secret_arn {
-  description = "SecretsManager secret ARN."
-}
-
-variable verify_requests {
-  description = "Verify Slack requests using signing secret."
-  default     = true
+variable secret_name {
+  description = "SecretsManager secret name."
 }

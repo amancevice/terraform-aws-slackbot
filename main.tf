@@ -63,7 +63,7 @@ data aws_kms_key key {
 }
 
 data aws_secretsmanager_secret secret {
-  arn = "${var.secret_arn}"
+  name = "${var.secret_name}"
 }
 
 resource aws_api_gateway_deployment api {
@@ -148,11 +148,10 @@ resource aws_lambda_function api {
 
   environment {
     variables {
-      OAUTH_REDIRECT    = "${var.oauth_redirect}"
-      PUBLISHER_PREFIX  = "${local.publisher_prefix}"
-      SLACKEND_BASE_URL = "${var.base_url}"
-      SLACK_SECRET      = "${data.aws_secretsmanager_secret.secret.name}"
-      VERIFY_REQUESTS   = "${var.verify_requests}"
+      AWS_SECRET     = "${data.aws_secretsmanager_secret.secret.name}"
+      AWS_SNS_PREFIX = "${local.publisher_prefix}"
+      BASE_URL       = "${var.base_url}"
+      DEBUG          = "${var.debug}"
     }
   }
 }

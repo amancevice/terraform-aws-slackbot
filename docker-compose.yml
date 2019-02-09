@@ -1,11 +1,16 @@
 version: '3'
 services:
+  npm:
+    entrypoint: npm
+    image: lambci/lambda:build-nodejs8.10
+    volumes:
+    - ./:/var/task
   package:
     command: >-
       sh -c "
-        rm -rf node_modules
-        npm install --production
-        zip -r package.zip node_modules/ index.js package.json package-lock.json
+        rm -rf node_modules &&
+        npm install --production &&
+        zip -r package.zip node_modules index.js package.json package-lock.json
       "
     image: lambci/lambda:build-nodejs8.10
     volumes:

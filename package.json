@@ -1,11 +1,12 @@
 {
   "dependencies": {
     "aws-serverless-express": "^3.3.5",
-    "slackend": "^0.4.0"
+    "slackend": "^1.0.0"
   },
   "devDependencies": {
-    "aws-sdk": "^2.335.0"
+    "aws-sdk": "^2.399.0"
   },
+  "private": true,
   "scripts": {
     "package": "docker-compose run package && docker-compose down"
   }
