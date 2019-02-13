@@ -170,7 +170,8 @@ resource aws_lambda_function post_message {
 
   environment {
     variables {
-      SLACK_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
+      AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
+      DEBUG      = "${var.debug}"
     }
   }
 }
@@ -189,7 +190,8 @@ resource aws_lambda_function post_ephemeral {
 
   environment {
     variables {
-      SLACK_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
+      AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
+      DEBUG      = "${var.debug}"
     }
   }
 }
