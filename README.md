@@ -25,12 +25,12 @@ module slackbot_secret {
   source                   = "amancevice/slackbot-secrets/aws"
   kms_key_alias            = "alias/slack/your-kms-key-alias"
   secret_name              = "slack/your-secret-name"
-  slack_token              = "${var.slack_bot_access_token}"
   slack_client_id          = "${var.slack_client_id}"
   slack_client_secret      = "${var.slack_client_secret}"
   slack_oauth_redirect_uri = "${var.slack_oauth_redirect_uri}"
   slack_signing_secret     = "${var.slack_signing_secret}"
   slack_signing_version    = "${var.slack_signing_version}"
+  slack_token              = "${var.slack_token}"
 
   // Additional secrets
   secrets {
