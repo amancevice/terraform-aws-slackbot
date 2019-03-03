@@ -1,4 +1,5 @@
-const slackend        = require('slackend/aws');
-exports.handler       = slackend.handler;
-exports.postMessage   = slackend.postMessage;
-exports.postEphemeral = slackend.postEphemeral;
+const slackend = require('slackend/aws');
+const lambda = slackend();
+exports.handler       = lambda.handler;
+exports.postMessage   = lambda.postMessage;
+exports.postEphemeral = lambda.postEphemeral;
