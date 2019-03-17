@@ -11,3 +11,4 @@
 # module
 .env
 node_modules/
+package.lambda.zip

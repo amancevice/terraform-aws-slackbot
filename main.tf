@@ -1,6 +1,7 @@
 locals {
   function_name    = "${coalesce(var.lambda_function_name, "slack-${var.api_name}-api")}"
   role_name        = "${coalesce(var.role_name, "slack-${var.api_name}")}"
+  runtime          = "nodejs8.10"
   topic_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
   topic_prefix     = "slack_${var.api_name}_"
   publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
@@ -9,6 +10,12 @@ locals {
     "${aws_lambda_function.post_message.function_name}",
     "${aws_lambda_function.post_ephemeral.function_name}",
   ]
+}
+
+data archive_file lambda {
+  source_file = "${path.module}/index.js"
+  output_path = "${path.module}/package.lambda.zip"
+  type        = "zip"
 }
 
 data aws_caller_identity current {
@@ -135,14 +142,15 @@ resource aws_iam_role_policy_attachment additional_policies {
 
 resource aws_lambda_function api {
   description      = "Slack request handler"
-  filename         = "${path.module}/package.zip"
+  filename         = "${data.archive_file.lambda.output_path}"
   function_name    = "${local.function_name}"
   handler          = "index.handler"
   kms_key_arn      = "${data.aws_kms_key.key.arn}"
+  layers           = ["${aws_lambda_layer_version.slackend.arn}"]
   memory_size      = "${var.lambda_memory_size}"
   role             = "${aws_iam_role.role.arn}"
-  runtime          = "nodejs8.10"
-  source_code_hash = "${base64sha256(file("${path.module}/package.zip"))}"
+  runtime          = "${local.runtime}"
+  source_code_hash = "${data.archive_file.lambda.output_base64sha256}"
   tags             = "${var.lambda_tags}"
   timeout          = "${var.lambda_timeout}"
 
@@ -158,13 +166,14 @@ resource aws_lambda_function api {
 
 resource aws_lambda_function post_message {
   description      = "Post Slack message via SNS"
-  filename         = "${path.module}/package.zip"
+  filename         = "${data.archive_file.lambda.output_path}"
   function_name    = "${local.function_name}-post-message"
   handler          = "index.postMessage"
   kms_key_arn      = "${data.aws_kms_key.key.arn}"
+  layers           = ["${aws_lambda_layer_version.slackend.arn}"]
   role             = "${aws_iam_role.role.arn}"
-  runtime          = "nodejs8.10"
-  source_code_hash = "${base64sha256(file("${path.module}/package.zip"))}"
+  runtime          = "${local.runtime}"
+  source_code_hash = "${data.archive_file.lambda.output_base64sha256}"
   tags             = "${var.lambda_tags}"
   timeout          = 15
 
@@ -178,13 +187,14 @@ resource aws_lambda_function post_message {
 
 resource aws_lambda_function post_ephemeral {
   description      = "Post Slack ephemeral message via SNS"
-  filename         = "${path.module}/package.zip"
+  filename         = "${data.archive_file.lambda.output_path}"
   function_name    = "${local.function_name}-post-ephemeral"
   handler          = "index.postEphemeral"
   kms_key_arn      = "${data.aws_kms_key.key.arn}"
+  layers           = ["${aws_lambda_layer_version.slackend.arn}"]
   role             = "${aws_iam_role.role.arn}"
-  runtime          = "nodejs8.10"
-  source_code_hash = "${base64sha256(file("${path.module}/package.zip"))}"
+  runtime          = "${local.runtime}"
+  source_code_hash = "${data.archive_file.lambda.output_base64sha256}"
   tags             = "${var.lambda_tags}"
   timeout          = 15
 
@@ -194,6 +204,14 @@ resource aws_lambda_function post_ephemeral {
       DEBUG      = "${var.debug}"
     }
   }
+}
+
+resource aws_lambda_layer_version slackend {
+  description         = "Slackend dependencies"
+  filename            = "${path.module}/package.zip"
+  layer_name          = "${var.lambda_layer_name}"
+  compatible_runtimes = ["${local.runtime}"]
+  source_code_hash    = "${base64sha256(file("${path.module}/package.zip"))}"
 }
 
 resource aws_lambda_permission invoke_api {

@@ -37,6 +37,11 @@ variable lambda_function_name {
   default     = ""
 }
 
+variable lambda_layer_name {
+  description = "Lambda layer name."
+  default     = "slackend"
+}
+
 variable lambda_memory_size {
   description = "Memory for Lambda function."
   default     = 1024

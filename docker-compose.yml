@@ -18,6 +18,15 @@ services:
       - ./package.json:/opt/nodejs/package.json
     working_dir: /opt/nodejs
 
+  # Package layer
+  package:
+    command: zip -r /var/task/package.zip .
+    image: lambci/lambda:build-nodejs8.10
+    volumes:
+      - opt_nodejs:/opt/nodejs
+      - ./:/var/task
+    working_dir: /opt
+
   # Test
   test:
     command: index.handler '{"path":"/slash/test","httpMethod":"POST"}'
