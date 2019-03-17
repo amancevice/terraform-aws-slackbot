@@ -2,7 +2,7 @@
   "dependencies": {
     "aws-serverless-express": "^3.3.5",
     "express": "^4.16.4",
-    "slackend": "^1.3.0"
+    "slackend": "^1.3.2"
   },
   "devDependencies": {
     "aws-sdk": "^2.401.0",
@@ -10,6 +10,9 @@
   },
   "private": true,
   "scripts": {
-    "package": "docker-compose run package && docker-compose down"
+    "lock": "docker-compose run --rm npm install",
+    "build": "docker-compose run --rm build",
+    "package": "docker-compose run --rm package",
+    "test": "docker-compose run --rm test"
   }
 }

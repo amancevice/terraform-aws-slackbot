@@ -1,19 +1,31 @@
 version: '3'
 services:
 
+  # Install dependencies
   npm:
     entrypoint: npm
     image: lambci/lambda:build-nodejs8.10
     volumes:
-    - ./:/var/task
+      - ./:/var/task
 
-  package:
-    command: >-
-      sh -c "
-        rm -rf node_modules &&
-        npm install --production &&
-        zip -r package.zip node_modules index.js package.json package-lock.json
-      "
+  # Build dependencies
+  build:
+    command: npm install --production
     image: lambci/lambda:build-nodejs8.10
     volumes:
-    - ./:/var/task
+      - opt_nodejs:/opt/nodejs
+      - ./package-lock.json:/opt/nodejs/package-lock.json
+      - ./package.json:/opt/nodejs/package.json
+    working_dir: /opt/nodejs
+
+  # Test
+  test:
+    command: index.handler '{"path":"/slash/test","httpMethod":"POST"}'
+    env_file: .env
+    image: lambci/lambda:nodejs8.10
+    volumes:
+      - ./:/var/task
+      - opt_nodejs:/opt/nodejs
+
+volumes:
+  opt_nodejs:
