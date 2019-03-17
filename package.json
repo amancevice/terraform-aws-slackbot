@@ -8,11 +8,13 @@
     "aws-sdk": "^2.401.0",
     "dotenv": "^6.2.0"
   },
+  "name": "slackbot",
   "private": true,
   "scripts": {
     "lock": "docker-compose run --rm npm install",
     "build": "docker-compose run --rm build",
     "package": "docker-compose run --rm package",
     "test": "docker-compose run --rm test"
-  }
+  },
+  "version": "12.2.0"
 }
