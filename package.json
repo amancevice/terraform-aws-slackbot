@@ -16,5 +16,5 @@
     "package": "docker-compose run --rm package",
     "test": "docker-compose run --rm test"
   },
-  "version": "12.2.0"
+  "version": "12.3.0"
 }
