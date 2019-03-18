@@ -8,12 +8,19 @@ services:
     volumes:
       - ./:/var/task
 
+  # Lock dependencies
+  lock:
+    command: npm install
+    image: lambci/lambda:build-nodejs8.10
+    volumes:
+      - ./:/var/task
+
   # Build dependencies
   build:
     command: npm install --production
     image: lambci/lambda:build-nodejs8.10
     volumes:
-      - opt_nodejs:/opt/nodejs
+      - nodejs:/opt/nodejs
       - ./package-lock.json:/opt/nodejs/package-lock.json
       - ./package.json:/opt/nodejs/package.json
     working_dir: /opt/nodejs
@@ -23,18 +30,18 @@ services:
     command: zip -r /var/task/package.zip .
     image: lambci/lambda:build-nodejs8.10
     volumes:
-      - opt_nodejs:/opt/nodejs
+      - nodejs:/opt/nodejs
       - ./:/var/task
     working_dir: /opt
 
   # Test
   test:
-    command: index.handler '{"path":"/slash/test","httpMethod":"POST"}'
+    command: index.handler '{"path":"/health","httpMethod":"GET"}'
     env_file: .env
     image: lambci/lambda:nodejs8.10
     volumes:
       - ./:/var/task
-      - opt_nodejs:/opt/nodejs
+      - nodejs:/opt/nodejs
 
 volumes:
-  opt_nodejs:
+  nodejs:
