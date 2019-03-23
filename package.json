@@ -2,11 +2,11 @@
   "dependencies": {
     "aws-serverless-express": "^3.3.5",
     "express": "^4.16.4",
-    "slackend": "^1.4.0"
+    "slackend": "^2.0.0"
   },
   "devDependencies": {
-    "aws-sdk": "^2.401.0",
-    "dotenv": "^6.2.0"
+    "aws-sdk": "^2.427.0",
+    "dotenv": "^7.0.0"
   },
   "name": "slackbot",
   "private": true,

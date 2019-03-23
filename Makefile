@@ -1,4 +1,4 @@
-lock:
+lock: package.json
 	docker-compose run --rm lock
 
 build:
