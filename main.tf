@@ -3,7 +3,7 @@ locals {
   role_name        = "${coalesce(var.role_name, "slack-${var.api_name}")}"
   runtime          = "nodejs8.10"
   topic_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
-  topic_prefix     = "slack_${var.api_name}_"
+  topic_prefix     = "${coalesce(var.sns_topic_prefix, "slack_${var.api_name}_")}"
   publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
   function_names   = [
     "${aws_lambda_function.api.function_name}",
@@ -236,15 +236,15 @@ resource aws_lambda_permission invoke_post_ephemeral {
 }
 
 resource aws_sns_topic oauth {
-  name = "slack_${var.api_name}_oauth"
+  name = "${local.topic_prefix}_oauth"
 }
 
 resource aws_sns_topic post_message {
-  name = "slack_${var.api_name}_post_message"
+  name = "${local.topic_prefix}_post_message"
 }
 
 resource aws_sns_topic post_ephemeral {
-  name = "slack_${var.api_name}_post_ephemeral"
+  name = "${local.topic_prefix}_post_ephemeral"
 }
 
 resource aws_sns_topic_subscription post_message_subscription {

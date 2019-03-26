@@ -98,3 +98,8 @@ variable role_tags {
 variable secret_name {
   description = "SecretsManager secret name."
 }
+
+variable sns_topic_prefix {
+  description = "Slackbot SNS topics prefix."
+  default     = ""
+}
