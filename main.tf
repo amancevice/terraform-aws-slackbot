@@ -74,11 +74,7 @@ data aws_secretsmanager_secret secret {
 }
 
 resource aws_api_gateway_deployment api {
-  depends_on  = [
-    "aws_api_gateway_integration.proxy_any",
-    "aws_api_gateway_method.any",
-    "aws_api_gateway_resource.proxy",
-  ]
+  depends_on  = ["aws_api_gateway_integration.proxy_any"]
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${var.api_stage_name}"
 }
@@ -111,6 +107,13 @@ resource aws_api_gateway_rest_api api {
   description            = "${var.api_description}"
   name                   = "${var.api_name}"
   endpoint_configuration = ["${var.api_endpoint_configuration}"]
+}
+
+resource aws_api_gateway_stage stage {
+  deployment_id = "${aws_api_gateway_deployment.api.id}"
+  rest_api_id   = "${aws_api_gateway_rest_api.api.id}"
+  stage_name    = "${var.api_stage_name}"
+  tags          = "${var.api_stage_tags}"
 }
 
 resource aws_cloudwatch_log_group logs {

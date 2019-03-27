@@ -13,6 +13,12 @@ variable api_stage_name {
   default     = "v1"
 }
 
+variable api_stage_tags {
+  description = "Slackbot API tags."
+  type        = "map"
+  default     = {}
+}
+
 variable api_endpoint_configuration {
   description = "Slackbot API endpoint type."
   type        = "map"
