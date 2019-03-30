@@ -74,7 +74,11 @@ data aws_secretsmanager_secret secret {
 }
 
 resource aws_api_gateway_deployment api {
-  depends_on  = ["aws_api_gateway_integration.proxy_any"]
+  depends_on  = [
+    "aws_api_gateway_integration.proxy_any",
+    "aws_api_gateway_method.any",
+    "aws_api_gateway_resource.proxy",
+  ]
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${var.api_stage_name}"
 }
@@ -239,15 +243,15 @@ resource aws_lambda_permission invoke_post_ephemeral {
 }
 
 resource aws_sns_topic oauth {
-  name = "${local.topic_prefix}_oauth"
+  name = "${local.topic_prefix}oauth"
 }
 
 resource aws_sns_topic post_message {
-  name = "${local.topic_prefix}_post_message"
+  name = "${local.topic_prefix}post_message"
 }
 
 resource aws_sns_topic post_ephemeral {
-  name = "${local.topic_prefix}_post_ephemeral"
+  name = "${local.topic_prefix}post_ephemeral"
 }
 
 resource aws_sns_topic_subscription post_message_subscription {
