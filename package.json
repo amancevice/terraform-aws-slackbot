@@ -2,7 +2,7 @@
   "dependencies": {
     "aws-serverless-express": "^3.3.5",
     "express": "^4.16.4",
-    "slackend": "^2.1.0"
+    "slackend": "^2.2.0"
   },
   "devDependencies": {
     "aws-sdk": "^2.427.0",
