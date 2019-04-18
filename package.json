@@ -13,5 +13,5 @@
   "scripts": {
     "test": "docker-compose run --rm test"
   },
-  "version": "13.5.0"
+  "version": "13.5.1"
 }
