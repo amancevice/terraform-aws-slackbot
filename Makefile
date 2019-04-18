@@ -1,3 +1,5 @@
+.PHONY: lock build package clean
+
 lock: package.json
 	docker-compose run --rm lock
 
