@@ -13,6 +13,7 @@ services:
     volumes:
       - ./:/var/task
       - ./node_modules:/opt/nodejs/node_modules
+    working_dir: /var/task
 
   # Build
   build:
@@ -23,3 +24,8 @@ services:
     <<: *base
     command: index.handler '{"path":"/health","httpMethod":"GET"}'
     image: lambci/lambda:nodejs8.10
+
+  # Terraform
+  terraform:
+    <<: *base
+    image: hashicorp/terraform

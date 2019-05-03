@@ -1,4 +1,4 @@
-.PHONY: default clean test
+.PHONY: default clean test init validate
 
 default: package.zip
 
@@ -20,3 +20,11 @@ clean:
 
 test:
 	docker-compose run --rm test
+
+.terraform:
+	docker-compose run --rm terraform init
+
+init: .terraform
+
+validate: .terraform
+	docker-compose run --rm terraform validate -check-variables=false
