@@ -1,47 +1,25 @@
 version: '3'
 services:
 
-  # Install dependencies
-  npm:
-    entrypoint: npm
+  # Base image
+  base: &base
+    environment:
+      AWS_ACCESS_KEY_ID:
+      AWS_DEFAULT_REGION:
+      AWS_SECRET:
+      AWS_SECRET_ACCESS_KEY:
     image: lambci/lambda:build-nodejs8.10
+    network_mode: bridge
     volumes:
       - ./:/var/task
+      - ./node_modules:/opt/nodejs/node_modules
 
-  # Lock dependencies
-  lock:
-    command: npm install
-    image: lambci/lambda:build-nodejs8.10
-    volumes:
-      - ./:/var/task
-
-  # Build dependencies
+  # Build
   build:
-    command: npm install --production
-    image: lambci/lambda:build-nodejs8.10
-    volumes:
-      - nodejs:/opt/nodejs
-      - ./package-lock.json:/opt/nodejs/package-lock.json
-      - ./package.json:/opt/nodejs/package.json
-    working_dir: /opt/nodejs
-
-  # Package layer
-  package:
-    command: zip -r /var/task/package.zip .
-    image: lambci/lambda:build-nodejs8.10
-    volumes:
-      - nodejs:/opt/nodejs
-      - ./:/var/task
-    working_dir: /opt
+    <<: *base
 
   # Test
   test:
+    <<: *base
     command: index.handler '{"path":"/health","httpMethod":"GET"}'
-    env_file: .env
     image: lambci/lambda:nodejs8.10
-    volumes:
-      - ./:/var/task
-      - nodejs:/opt/nodejs
-
-volumes:
-  nodejs:

@@ -1,14 +1,22 @@
-.PHONY: lock build package clean
+.PHONY: default clean test
 
-lock: package.json
-	docker-compose run --rm lock
+default: package.zip
 
-build:
-	docker-compose run --rm build
+package-lock.json: package.json
+	docker-compose run --rm build \
+	npm install --package-lock-only
 
-package:
-	docker-compose run --rm package
-	git add package.zip
+node_modules: package-lock.json
+	docker-compose run --rm build \
+	npm install --production
+
+package.zip: node_modules
+	docker-compose run --rm -T -w /opt build \
+	zip -r - . > $@
+	git add $@
 
 clean:
-	docker-compose down --volumes
+	rm -rf .terraform node_modules
+
+test:
+	docker-compose run --rm test
