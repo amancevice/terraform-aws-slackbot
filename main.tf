@@ -25,10 +25,10 @@ data aws_region current {
 }
 
 data aws_iam_policy_document assume_role {
-  statement {
+  statement = {
     actions = ["sts:AssumeRole"]
 
-    principals {
+    principals = {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
     }
@@ -36,25 +36,25 @@ data aws_iam_policy_document assume_role {
 }
 
 data aws_iam_policy_document api {
-  statement {
+  statement = {
     sid       = "DecryptKmsKey"
     actions   = ["kms:Decrypt"]
     resources = ["${data.aws_kms_key.key.arn}"]
   }
 
-  statement {
+  statement = {
     sid       = "GetSecretValue"
     actions   = ["secretsmanager:GetSecretValue"]
     resources = ["${data.aws_secretsmanager_secret.secret.arn}"]
   }
 
-  statement {
+  statement = {
     sid       = "PublishEvents"
     actions   = ["sns:Publish"]
     resources = ["${local.publisher_prefix}*"]
   }
 
-  statement {
+  statement = {
     sid       = "WriteLambdaLogs"
     actions   = [
       "logs:CreateLogGroup",
@@ -161,8 +161,8 @@ resource aws_lambda_function api {
   tags             = "${var.lambda_tags}"
   timeout          = "${var.lambda_timeout}"
 
-  environment {
-    variables {
+  environment = {
+    variables = {
       AWS_SECRET     = "${data.aws_secretsmanager_secret.secret.name}"
       AWS_SNS_PREFIX = "${local.publisher_prefix}"
       BASE_URL       = "${var.base_url}"
@@ -184,8 +184,8 @@ resource aws_lambda_function post_message {
   tags             = "${var.lambda_tags}"
   timeout          = 15
 
-  environment {
-    variables {
+  environment = {
+    variables = {
       AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
       DEBUG      = "${var.debug}"
     }
@@ -205,8 +205,8 @@ resource aws_lambda_function post_ephemeral {
   tags             = "${var.lambda_tags}"
   timeout          = 15
 
-  environment {
-    variables {
+  environment = {
+    variables = {
       AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
       DEBUG      = "${var.debug}"
     }
