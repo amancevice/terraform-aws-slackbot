@@ -215,10 +215,10 @@ resource aws_lambda_function post_ephemeral {
 
 resource aws_lambda_layer_version slackend {
   description         = "Slackend dependencies"
-  filename            = "${path.module}/package.zip"
+  filename            = "${path.module}/package.layer.zip"
   layer_name          = "${var.lambda_layer_name}"
   compatible_runtimes = ["${local.runtime}"]
-  source_code_hash    = "${base64sha256(file("${path.module}/package.zip"))}"
+  source_code_hash    = "${base64sha256(file("${path.module}/package.layer.zip"))}"
 }
 
 resource aws_lambda_permission invoke_api {
