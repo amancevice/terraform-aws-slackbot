@@ -9,6 +9,7 @@
 *.tfvars
 
 # module
-.env
-node_modules/
-package.lambda.zip
+**/node_modules/*
+*.env
+*.zip
+!package.layer.zip
