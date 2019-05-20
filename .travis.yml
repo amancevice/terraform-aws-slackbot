@@ -3,7 +3,5 @@ node_js:
 - "10"
 services:
 - docker
-install:
-- make build
 script:
 - make
