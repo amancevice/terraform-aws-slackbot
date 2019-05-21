@@ -1,7 +1,6 @@
 locals {
   function_name    = "${coalesce(var.lambda_function_name, "slack-${var.api_name}-api")}"
   role_name        = "${coalesce(var.role_name, "slack-${var.api_name}")}"
-  runtime          = "nodejs8.10"
   topic_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
   topic_prefix     = "${coalesce(var.sns_topic_prefix, "slack_${var.api_name}_")}"
   publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
@@ -156,7 +155,7 @@ resource aws_lambda_function api {
   layers           = ["${aws_lambda_layer_version.slackend.arn}"]
   memory_size      = "${var.lambda_memory_size}"
   role             = "${aws_iam_role.role.arn}"
-  runtime          = "${local.runtime}"
+  runtime          = "${var.lambda_runtime}"
   source_code_hash = "${data.archive_file.lambda.output_base64sha256}"
   tags             = "${var.lambda_tags}"
   timeout          = "${var.lambda_timeout}"
@@ -179,7 +178,7 @@ resource aws_lambda_function post_message {
   kms_key_arn      = "${data.aws_kms_key.key.arn}"
   layers           = ["${aws_lambda_layer_version.slackend.arn}"]
   role             = "${aws_iam_role.role.arn}"
-  runtime          = "${local.runtime}"
+  runtime          = "${var.lambda_runtime}"
   source_code_hash = "${data.archive_file.lambda.output_base64sha256}"
   tags             = "${var.lambda_tags}"
   timeout          = 15
@@ -200,7 +199,7 @@ resource aws_lambda_function post_ephemeral {
   kms_key_arn      = "${data.aws_kms_key.key.arn}"
   layers           = ["${aws_lambda_layer_version.slackend.arn}"]
   role             = "${aws_iam_role.role.arn}"
-  runtime          = "${local.runtime}"
+  runtime          = "${var.lambda_runtime}"
   source_code_hash = "${data.archive_file.lambda.output_base64sha256}"
   tags             = "${var.lambda_tags}"
   timeout          = 15
@@ -215,10 +214,10 @@ resource aws_lambda_function post_ephemeral {
 
 resource aws_lambda_layer_version slackend {
   description         = "Slackend dependencies"
-  filename            = "${path.module}/package.zip"
+  filename            = "${path.module}/package.layer.zip"
   layer_name          = "${var.lambda_layer_name}"
-  compatible_runtimes = ["${local.runtime}"]
-  source_code_hash    = "${base64sha256(file("${path.module}/package.zip"))}"
+  compatible_runtimes = ["${var.lambda_runtime}"]
+  source_code_hash    = "${base64sha256(file("${path.module}/package.layer.zip"))}"
 }
 
 resource aws_lambda_permission invoke_api {

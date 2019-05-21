@@ -52,6 +52,11 @@ variable lambda_memory_size {
   default     = 1024
 }
 
+variable lambda_runtime {
+  description = "Lambda function runtime."
+  default     = "nodejs10.x"
+}
+
 variable lambda_tags {
   description = "AWS resource tags."
   type        = "map"
