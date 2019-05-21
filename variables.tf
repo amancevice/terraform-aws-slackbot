@@ -22,7 +22,8 @@ variable api_stage_tags {
 variable api_endpoint_configuration {
   description = "Slackbot API endpoint type."
   type        = "map"
-  default     = {
+
+  default = {
     types = ["EDGE"]
   }
 }

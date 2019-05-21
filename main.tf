@@ -4,7 +4,8 @@ locals {
   topic_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
   topic_prefix     = "${coalesce(var.sns_topic_prefix, "slack_${var.api_name}_")}"
   publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
-  function_names   = [
+
+  function_names = [
     "${aws_lambda_function.api.function_name}",
     "${aws_lambda_function.post_message.function_name}",
     "${aws_lambda_function.post_ephemeral.function_name}",
@@ -17,11 +18,9 @@ data archive_file lambda {
   type        = "zip"
 }
 
-data aws_caller_identity current {
-}
+data aws_caller_identity current {}
 
-data aws_region current {
-}
+data aws_region current {}
 
 data aws_iam_policy_document assume_role {
   statement = {
@@ -54,12 +53,14 @@ data aws_iam_policy_document api {
   }
 
   statement = {
-    sid       = "WriteLambdaLogs"
-    actions   = [
+    sid = "WriteLambdaLogs"
+
+    actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
     ]
+
     resources = ["*"]
   }
 }
@@ -73,11 +74,12 @@ data aws_secretsmanager_secret secret {
 }
 
 resource aws_api_gateway_deployment api {
-  depends_on  = [
+  depends_on = [
     "aws_api_gateway_integration.proxy_any",
     "aws_api_gateway_method.any",
     "aws_api_gateway_resource.proxy",
   ]
+
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${var.api_stage_name}"
 }
@@ -135,9 +137,9 @@ resource aws_iam_role role {
 }
 
 resource aws_iam_role_policy api {
-  name        = "api"
-  role        = "${aws_iam_role.role.id}"
-  policy      = "${data.aws_iam_policy_document.api.json}"
+  name   = "api"
+  role   = "${aws_iam_role.role.id}"
+  policy = "${data.aws_iam_policy_document.api.json}"
 }
 
 resource aws_iam_role_policy_attachment additional_policies {
