@@ -4,8 +4,6 @@ images   = $(shell docker image ls --filter reference=$(image) --quiet)
 
 .PHONY: build test clean
 
-default: package.layer.zip
-
 package.layer.zip: package-lock.json
 	docker run --rm $(image):build-$(runtime) \
 	cat $@ > $@
