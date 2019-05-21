@@ -15,6 +15,7 @@ package-lock.json: package.json
 package.json: build
 
 build:
+	terraform fmt
 	docker build \
 	--build-arg RUNTIME=$(runtime) \
 	--tag $(image):$@-$(runtime) \
