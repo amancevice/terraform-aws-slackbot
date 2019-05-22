@@ -17,6 +17,7 @@ COPY index.js .
 ARG AWS_DEFAULT_REGION=us-east-1
 ARG TF_VAR_kms_key_id=12345678-abcd-1234-abcd-1234567890ab
 ARG TF_VAR_secret_name=secret_name
+RUN terraform fmt -check
 RUN terraform validate
 
 FROM lambci/lambda:${RUNTIME}

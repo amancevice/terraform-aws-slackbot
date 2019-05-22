@@ -8,14 +8,11 @@ package.layer.zip: package-lock.json
 	docker run --rm $(image):build-$(runtime) \
 	cat $@ > $@
 
-package-lock.json: package.json
+package-lock.json: package.json build
 	docker run --rm $(image):build-$(runtime) \
 	cat /opt/nodejs/$@ > $@
 
-package.json: build
-
 build:
-	terraform fmt
 	docker build \
 	--build-arg RUNTIME=$(runtime) \
 	--tag $(image):$@-$(runtime) \
