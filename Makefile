@@ -8,8 +8,8 @@ package.layer.zip: package-lock.json
 	docker run --rm $(image):build-$(runtime) \
 	cat $@ > $@
 
-package-lock.json: package.json build
-	docker run --rm $(image):build-$(runtime) \
+package-lock.json: build package.json
+	docker run --rm $(image):$<-$(runtime) \
 	cat /opt/nodejs/$@ > $@
 
 build:
