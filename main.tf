@@ -23,10 +23,10 @@ data aws_caller_identity current {}
 data aws_region current {}
 
 data aws_iam_policy_document assume_role {
-  statement = {
+  statement {
     actions = ["sts:AssumeRole"]
 
-    principals = {
+    principals {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
     }
@@ -34,25 +34,25 @@ data aws_iam_policy_document assume_role {
 }
 
 data aws_iam_policy_document api {
-  statement = {
+  statement {
     sid       = "DecryptKmsKey"
     actions   = ["kms:Decrypt"]
     resources = ["${data.aws_kms_key.key.arn}"]
   }
 
-  statement = {
+  statement {
     sid       = "GetSecretValue"
     actions   = ["secretsmanager:GetSecretValue"]
     resources = ["${data.aws_secretsmanager_secret.secret.arn}"]
   }
 
-  statement = {
+  statement {
     sid       = "PublishEvents"
     actions   = ["sns:Publish"]
     resources = ["${local.publisher_prefix}*"]
   }
 
-  statement = {
+  statement {
     sid = "WriteLambdaLogs"
 
     actions = [
@@ -109,9 +109,12 @@ resource aws_api_gateway_resource proxy {
 }
 
 resource aws_api_gateway_rest_api api {
-  description            = "${var.api_description}"
-  name                   = "${var.api_name}"
-  endpoint_configuration = ["${var.api_endpoint_configuration}"]
+  description = "${var.api_description}"
+  name        = "${var.api_name}"
+
+  endpoint_configuration {
+    types = ["${var.api_endpoint_configuration_type}"]
+  }
 }
 
 resource aws_api_gateway_stage stage {
@@ -162,7 +165,7 @@ resource aws_lambda_function api {
   tags             = "${var.lambda_tags}"
   timeout          = "${var.lambda_timeout}"
 
-  environment = {
+  environment {
     variables = {
       AWS_SECRET     = "${data.aws_secretsmanager_secret.secret.name}"
       AWS_SNS_PREFIX = "${local.publisher_prefix}"
@@ -185,7 +188,7 @@ resource aws_lambda_function post_message {
   tags             = "${var.lambda_tags}"
   timeout          = 15
 
-  environment = {
+  environment {
     variables = {
       AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
       DEBUG      = "${var.debug}"
@@ -206,7 +209,7 @@ resource aws_lambda_function post_ephemeral {
   tags             = "${var.lambda_tags}"
   timeout          = 15
 
-  environment = {
+  environment {
     variables = {
       AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
       DEBUG      = "${var.debug}"
@@ -219,7 +222,7 @@ resource aws_lambda_layer_version slackend {
   filename            = "${path.module}/package.layer.zip"
   layer_name          = "${var.lambda_layer_name}"
   compatible_runtimes = ["${var.lambda_runtime}"]
-  source_code_hash    = "${base64sha256(file("${path.module}/package.layer.zip"))}"
+  source_code_hash    = "${filebase64sha256("${path.module}/package.layer.zip")}"
 }
 
 resource aws_lambda_permission invoke_api {

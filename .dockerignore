@@ -1,4 +1,4 @@
 *
 !*.tf
 !index.js
-!package.json
+!package*.json

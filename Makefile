@@ -1,28 +1,31 @@
+# Project
 runtime := nodejs10.x
-image   := amancevice/slackbot
-images   = $(shell docker image ls --filter reference=$(image) --quiet)
+name    := slackbot
+release := $(shell git describe --tags)
+build   := $(release)-$(runtime)
 
-.PHONY: build test clean
+# Docker Build
+image := amancevice/$(name)
+digest = $(shell cat build/$(build).build)
 
-package.layer.zip: package-lock.json
-	docker run --rm $(image):build-$(runtime) \
-	cat $@ > $@
+package.layer.zip: package-lock.json | build/$(build).build
+	docker run --rm --entrypoint cat $(digest) $@ > $@
 
-package-lock.json: build package.json
-	docker run --rm $(image):$<-$(runtime) \
-	cat /opt/nodejs/$@ > $@
+package-lock.json: package.json | build/$(build).build
+	docker run --rm --entrypoint cat $(digest) /opt/nodejs/$@ > $@
+
+build/$(build).build: index.js | build
+	docker build \
+	--build-arg RUNTIME=$(runtime) \
+	--tag $(image):$(build) .
+	docker image inspect --format '{{.Id}}' $(image):$(build) > $@
 
 build:
-	docker build \
-	--build-arg RUNTIME=$(runtime) \
-	--tag $(image):$@-$(runtime) \
-	--target $@ .
+	mkdir -p $@
 
-test: package.layer.zip
-	docker build \
-	--build-arg RUNTIME=$(runtime) \
-	--tag $(image):$(runtime) .
+.PHONY: test clean
 
+test:
 	docker run --rm \
 	--env AWS_ACCESS_KEY_ID \
 	--env AWS_DEFAULT_REGION \
@@ -30,8 +33,9 @@ test: package.layer.zip
 	--env AWS_SECRET \
 	--env AWS_SECRET_ACCESS_KEY \
 	--env AWS_SNS_PREFIX \
-	$(image):$(runtime) \
+	$(digest) \
 	index.handler '{"path":"/health","httpMethod":"GET"}'
 
 clean:
-	docker rmi -f $(images)
+	rm -rf build
+	docker rmi -f $(image):$(build)

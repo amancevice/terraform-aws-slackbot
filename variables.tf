@@ -19,13 +19,9 @@ variable api_stage_tags {
   default     = {}
 }
 
-variable api_endpoint_configuration {
+variable api_endpoint_configuration_type {
   description = "Slackbot API endpoint type."
-  type        = "map"
-
-  default = {
-    types = ["EDGE"]
-  }
+  default     = "EDGE"
 }
 
 variable base_url {

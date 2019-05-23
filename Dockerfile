@@ -1,8 +1,8 @@
 ARG RUNTIME=nodejs10.x
 
 FROM lambci/lambda:build-${RUNTIME} AS install
-COPY --from=hashicorp/terraform:0.11.14 /bin/terraform /bin/
-COPY package.json /opt/nodejs/
+COPY --from=hashicorp/terraform:0.12.0 /bin/terraform /bin/
+COPY package*.json /opt/nodejs/
 WORKDIR /opt/nodejs/
 RUN npm install --production
 WORKDIR /var/task/
@@ -22,4 +22,4 @@ RUN terraform validate
 
 FROM lambci/lambda:${RUNTIME}
 COPY --from=build /opt/ /opt/
-COPY --from=build /var/task/index.js /var/task/
+COPY --from=build /var/task/ /var/task/
