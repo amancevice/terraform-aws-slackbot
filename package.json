@@ -1,17 +1,16 @@
 {
   "dependencies": {
     "aws-serverless-express": "^3.3.6",
-    "express": "^4.17.0",
-    "slackend": "^2.3.0"
+    "slackend": "^2.3.1"
   },
   "devDependencies": {
-    "aws-sdk": "^2.458.0",
+    "aws-sdk": "^2.462.0",
     "dotenv": "^7.0.0"
   },
   "name": "slackbot",
   "private": true,
   "scripts": {
-    "test": "docker-compose run --rm test"
+    "test": "make test"
   },
   "version": "13.5.1"
 }

@@ -10,6 +10,7 @@
 
 # module
 **/build/
+**/dist/
 **/node_modules/*
 *.env
 *.zip
