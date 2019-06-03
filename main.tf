@@ -5,7 +5,7 @@ locals {
   topic_arn_prefix = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}"
   topic_prefix     = "${coalesce(var.sns_topic_prefix, "slack_${var.api_name}_")}"
   publisher_prefix = "${local.topic_arn_prefix}:${local.topic_prefix}"
-  function_names   = [
+  function_names = [
     "${aws_lambda_function.api.function_name}",
     "${aws_lambda_function.post_message.function_name}",
     "${aws_lambda_function.post_ephemeral.function_name}",
@@ -55,8 +55,8 @@ data aws_iam_policy_document api {
   }
 
   statement {
-    sid       = "WriteLambdaLogs"
-    actions   = [
+    sid = "WriteLambdaLogs"
+    actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
@@ -74,7 +74,7 @@ data aws_secretsmanager_secret secret {
 }
 
 resource aws_api_gateway_deployment api {
-  depends_on  = [
+  depends_on = [
     "aws_api_gateway_integration.proxy_any",
     "aws_api_gateway_method.any",
     "aws_api_gateway_resource.proxy",
@@ -136,9 +136,9 @@ resource aws_iam_role role {
 }
 
 resource aws_iam_role_policy api {
-  name        = "api"
-  role        = "${aws_iam_role.role.id}"
-  policy      = "${data.aws_iam_policy_document.api.json}"
+  name   = "api"
+  role   = "${aws_iam_role.role.id}"
+  policy = "${data.aws_iam_policy_document.api.json}"
 }
 
 resource aws_iam_role_policy_attachment additional_policies {
@@ -218,7 +218,7 @@ resource aws_lambda_layer_version slackend {
   filename            = "${path.module}/package.zip"
   layer_name          = "${var.lambda_layer_name}"
   compatible_runtimes = ["${local.runtime}"]
-  source_code_hash    = "${base64sha256(file("${path.module}/package.zip"))}"
+  source_code_hash    = "${filebase64sha256("${path.module}/package.zip")}"
 }
 
 resource aws_lambda_permission invoke_api {
