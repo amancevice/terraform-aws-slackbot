@@ -7,10 +7,5 @@
     "aws-sdk": "^2.462.0",
     "dotenv": "^7.0.0"
   },
-  "name": "slackbot",
-  "private": true,
-  "scripts": {
-    "test": "make test"
-  },
-  "version": "13.5.1"
+  "private": true
 }
