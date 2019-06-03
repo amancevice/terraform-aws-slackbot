@@ -162,7 +162,7 @@ resource aws_lambda_function api {
   timeout          = "${var.lambda_timeout}"
 
   environment {
-    variables {
+    variables = {
       AWS_SECRET     = "${data.aws_secretsmanager_secret.secret.name}"
       AWS_SNS_PREFIX = "${local.publisher_prefix}"
       BASE_URL       = "${var.base_url}"
@@ -185,7 +185,7 @@ resource aws_lambda_function post_message {
   timeout          = 15
 
   environment {
-    variables {
+    variables = {
       AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
       DEBUG      = "${var.debug}"
     }
@@ -206,7 +206,7 @@ resource aws_lambda_function post_ephemeral {
   timeout          = 15
 
   environment {
-    variables {
+    variables = {
       AWS_SECRET = "${data.aws_secretsmanager_secret.secret.name}"
       DEBUG      = "${var.debug}"
     }
