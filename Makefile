@@ -11,7 +11,7 @@ all: package-lock.json package.layer.zip
 	mkdir -p $@
 
 .docker/$(build)@test: .docker/$(build)@build
-.docker/$(build)@%: .dockerignore Dockerfile package.json | .docker
+.docker/$(build)@%: | .docker
 	docker build \
 	--build-arg RUNTIME=$(runtime) \
 	--iidfile $@ \
@@ -26,6 +26,6 @@ clean:
 	-rm -rf .docker
 
 shell@%: .docker/$(build)@%
-	docker run --rm -it --entrypoint /bin/bash $(call digest,@$*)
+	docker run --rm -it $(call digest,@$*) /bin/bash
 
 test: all .docker/$(build)@test
