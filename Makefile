@@ -21,11 +21,11 @@ all: package-lock.json package.layer.zip
 package-lock.json package.layer.zip: .docker/$(build)@build
 	docker run --rm -w /opt/nodejs/ $(call digest,@build) cat $@ > $@
 
-test: all .docker/$(build)@test
-
 clean:
 	-docker image rm -f $(shell awk {print} .docker/*)
 	-rm -rf .docker
 
 shell@%: .docker/$(build)@%
 	docker run --rm -it --entrypoint /bin/bash $(call digest,@$*)
+
+test: all .docker/$(build)@test
