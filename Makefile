@@ -1,6 +1,7 @@
 name    := slackbot
 runtime := nodejs10.x
 build   := $(shell git describe --tags --always)
+digest   = $(shell cat .docker/$(build)$(1))
 
 .PHONY: all clean shell@% test
 
@@ -18,7 +19,7 @@ all: package-lock.json package.layer.zip
 	--target $* .
 
 package-lock.json package.layer.zip: .docker/$(build)@build
-	docker run --rm -w /opt/nodejs/ $(shell cat $<) cat $@ > $@
+	docker run --rm -w /opt/nodejs/ $(call digest,@build) cat $@ > $@
 
 test: all .docker/$(build)@test
 
@@ -27,4 +28,4 @@ clean:
 	-rm -rf .docker
 
 shell@%: .docker/$(build)@%
-	docker run --rm -it --entrypoint /bin/bash $(shell cat $<)
+	docker run --rm -it --entrypoint /bin/bash $(call digest,@$*)
