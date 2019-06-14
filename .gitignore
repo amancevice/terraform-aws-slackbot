@@ -8,8 +8,8 @@
 # .tfvars files
 *.tfvars
 
-# module
 **/.docker/
+**/.terraform/
 **/node_modules/
 *.env
 *.zip
