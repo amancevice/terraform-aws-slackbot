@@ -38,32 +38,12 @@ output secret_name {
   value       = data.aws_secretsmanager_secret.secret.name
 }
 
-output oauth_topic_arn {
+output topic_arn {
   description = "Slackbot OAuth SNS topic ARN."
-  value       = aws_sns_topic.oauth.arn
+  value       = aws_sns_topic.topic.arn
 }
 
-output oauth_topic_name {
+output topic_name {
   description = "Slackbot OAuth SNS topic name."
-  value       = aws_sns_topic.oauth.name
-}
-
-output post_message_topic_arn {
-  description = "Slackbot post message SNS topic ARN."
-  value       = aws_sns_topic.post_message.arn
-}
-
-output post_message_topic_name {
-  description = "Slackbot post message SNS topic name."
-  value       = aws_sns_topic.post_message.name
-}
-
-output post_ephemeral_topic_arn {
-  description = "Slackbot post ephemeral SNS topic ARN."
-  value       = aws_sns_topic.post_ephemeral.arn
-}
-
-output post_ephemeral_topic_name {
-  description = "Slackbot post ephemeral SNS topic name."
-  value       = aws_sns_topic.post_ephemeral.name
+  value       = aws_sns_topic.topic.name
 }

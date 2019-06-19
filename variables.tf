@@ -5,12 +5,12 @@ variable api_description {
 
 variable api_name {
   description = "Slackbot API name."
-  default     = "slackbot"
+  default     = ""
 }
 
 variable api_stage_name {
   description = "Slackbot API stage."
-  default     = "v1"
+  default     = "prod"
 }
 
 variable api_stage_tags {
@@ -24,6 +24,10 @@ variable api_endpoint_configuration_type {
   default     = "EDGE"
 }
 
+variable app_name {
+  description = "Slackbot name."
+}
+
 variable base_url {
   description = "Base URL for handling slackend requests."
   default     = "/"
@@ -32,16 +36,6 @@ variable base_url {
 variable debug {
   description = "Debug log string."
   default     = "slackend:*"
-}
-
-variable lambda_function_name {
-  description = "Lambda Function for publishing events from Slack to SNS."
-  default     = ""
-}
-
-variable lambda_layer_name {
-  description = "Lambda layer name."
-  default     = "slackend"
 }
 
 variable lambda_memory_size {
@@ -106,7 +100,7 @@ variable secret_name {
   description = "SecretsManager secret name."
 }
 
-variable sns_topic_prefix {
-  description = "Slackbot SNS topics prefix."
+variable topic_name {
+  description = "Slackbot SNS topic name."
   default     = ""
 }
