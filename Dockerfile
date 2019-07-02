@@ -7,7 +7,7 @@ RUN npm install --production
 RUN zip -r package.zip index.js node_modules package*.json
 
 FROM lambci/lambda:build-${RUNTIME} AS test
-COPY --from=hashicorp/terraform:0.12.2 /bin/terraform /bin/
+COPY --from=hashicorp/terraform:0.12.3 /bin/terraform /bin/
 COPY --from=build /var/task/package.zip .
 COPY *.tf /var/task/
 ARG AWS_DEFAULT_REGION=us-east-1
