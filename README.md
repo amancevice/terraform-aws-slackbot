@@ -12,7 +12,7 @@ The archetecture for the Slackbot API is fairly straightforward. All requests ar
 
 OAuth requests are authenticated using the Slack client and redirected to the configured redirect URL.
 
-<img alt="arch" src="https://github.com/amancevice/terraform-aws-slackbot/blob/master/docs/images/arch.png?raw=true"/>
+<img alt="arch" src="https://github.com/amancevice/slackend/raw/master/docs/aws.png"/>
 
 ## Quickstart
 
