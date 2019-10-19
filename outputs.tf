@@ -18,6 +18,36 @@ output kms_key_arn {
   value       = data.aws_kms_key.key.arn
 }
 
+output lambda_api_arn {
+  description = "API Lambda ARN."
+  value       = aws_lambda_function.api.arn
+}
+
+output lambda_api_function_name {
+  description = "API Lambda function name."
+  value       = aws_lambda_function.api.function_name
+}
+
+output lambda_post_message_arn {
+  description = "Post message Lambda ARN."
+  value       = aws_lambda_function.post_message.arn
+}
+
+output lambda_post_message_function_name {
+  description = "Post message Lambda function name."
+  value       = aws_lambda_function.post_message.function_name
+}
+
+output lambda_post_ephemeral_arn {
+  description = "Post ephemeral Lambda ARN."
+  value       = aws_lambda_function.post_ephemeral.arn
+}
+
+output lambda_post_ephemeral_function_name {
+  description = "Post ephemeral Lambda function name."
+  value       = aws_lambda_function.post_ephemeral.function_name
+}
+
 output role_arn {
   description = "Lambda function role ARN."
   value       = aws_iam_role.role.arn
