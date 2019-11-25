@@ -1,4 +1,4 @@
-runtime   := nodejs10.x
+runtime   := nodejs12.x
 stages    := build test
 terraform := latest
 build     := $(shell git describe --tags --always)

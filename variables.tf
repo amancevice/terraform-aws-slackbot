@@ -45,7 +45,7 @@ variable lambda_memory_size {
 
 variable lambda_runtime {
   description = "Lambda function runtime."
-  default     = "nodejs10.x"
+  default     = "nodejs12.x"
 }
 
 variable lambda_tags {

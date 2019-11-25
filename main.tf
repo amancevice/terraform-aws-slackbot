@@ -8,9 +8,26 @@ terraform {
 }
 
 locals {
-  api_name   = coalesce(var.api_name, var.app_name)
-  role_name  = coalesce(var.role_name, var.app_name)
-  topic_name = coalesce(var.topic_name, var.app_name)
+  api_description                 = var.api_description
+  api_endpoint_configuration_type = var.api_endpoint_configuration_type
+  api_name                        = coalesce(var.api_name, var.app_name)
+  api_stage_name                  = var.api_stage_name
+  app_name                        = var.app_name
+  base_url                        = var.base_url
+  debug                           = var.debug
+  kms_key_id                      = var.kms_key_id
+  lambda_memory_size              = var.lambda_memory_size
+  lambda_runtime                  = var.lambda_runtime
+  lambda_tags                     = var.lambda_tags
+  lambda_timeout                  = var.lambda_timeout
+  log_group_retention_in_days     = var.log_group_retention_in_days
+  log_group_tags                  = var.log_group_tags
+  role_name                       = coalesce(var.role_name, var.app_name)
+  role_path                       = var.role_path
+  role_policy_attachments         = var.role_policy_attachments
+  role_tags                       = var.role_tags
+  secret_name                     = var.secret_name
+  topic_name                      = coalesce(var.topic_name, var.app_name)
 
   post_ephemeral_filter_policy = {
     id   = ["postEphemeral"]
@@ -67,17 +84,17 @@ data aws_iam_policy_document api {
 }
 
 data aws_kms_key key {
-  key_id = var.kms_key_id
+  key_id = local.kms_key_id
 }
 
 data aws_secretsmanager_secret secret {
-  name = var.secret_name
+  name = local.secret_name
 }
 
 resource aws_api_gateway_deployment api {
   depends_on  = [aws_api_gateway_integration.proxy_any]
   rest_api_id = aws_api_gateway_rest_api.api.id
-  stage_name  = var.api_stage_name
+  stage_name  = local.api_stage_name
 }
 
 resource aws_api_gateway_integration proxy_any {
@@ -105,38 +122,38 @@ resource aws_api_gateway_resource proxy {
 }
 
 resource aws_api_gateway_rest_api api {
-  description = var.api_description
+  description = local.api_description
   name        = local.api_name
 
   endpoint_configuration {
-    types = [var.api_endpoint_configuration_type]
+    types = [local.api_endpoint_configuration_type]
   }
 }
 
 resource aws_cloudwatch_log_group api {
   name              = "/aws/lambda/${aws_lambda_function.api.function_name}"
-  retention_in_days = var.log_group_retention_in_days
-  tags              = var.log_group_tags
+  retention_in_days = local.log_group_retention_in_days
+  tags              = local.log_group_tags
 }
 
 resource aws_cloudwatch_log_group post_message {
   name              = "/aws/lambda/${aws_lambda_function.post_message.function_name}"
-  retention_in_days = var.log_group_retention_in_days
-  tags              = var.log_group_tags
+  retention_in_days = local.log_group_retention_in_days
+  tags              = local.log_group_tags
 }
 
 resource aws_cloudwatch_log_group post_ephemeral {
   name              = "/aws/lambda/${aws_lambda_function.post_ephemeral.function_name}"
-  retention_in_days = var.log_group_retention_in_days
-  tags              = var.log_group_tags
+  retention_in_days = local.log_group_retention_in_days
+  tags              = local.log_group_tags
 }
 
 resource aws_iam_role role {
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
   description        = "Slackbot resource access"
   name               = local.role_name
-  path               = var.role_path
-  tags               = var.role_tags
+  path               = local.role_path
+  tags               = local.role_tags
 }
 
 resource aws_iam_role_policy api {
@@ -146,30 +163,30 @@ resource aws_iam_role_policy api {
 }
 
 resource aws_iam_role_policy_attachment additional_policies {
-  count      = length(var.role_policy_attachments)
+  count      = length(local.role_policy_attachments)
   role       = aws_iam_role.role.name
-  policy_arn = element(var.role_policy_attachments, count.index)
+  policy_arn = element(local.role_policy_attachments, count.index)
 }
 
 resource aws_lambda_function api {
   description      = "Slack request handler"
   filename         = "${path.module}/package.zip"
-  function_name    = "${var.app_name}-api"
+  function_name    = "${local.app_name}-api"
   handler          = "index.handler"
   kms_key_arn      = data.aws_kms_key.key.arn
-  memory_size      = var.lambda_memory_size
+  memory_size      = local.lambda_memory_size
   role             = aws_iam_role.role.arn
-  runtime          = var.lambda_runtime
+  runtime          = local.lambda_runtime
   source_code_hash = filebase64sha256("${path.module}/package.zip")
-  tags             = var.lambda_tags
-  timeout          = var.lambda_timeout
+  tags             = local.lambda_tags
+  timeout          = local.lambda_timeout
 
   environment {
     variables = {
       AWS_SECRET        = data.aws_secretsmanager_secret.secret.name
       AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
-      BASE_URL          = var.base_url
-      DEBUG             = var.debug
+      BASE_URL          = local.base_url
+      DEBUG             = local.debug
     }
   }
 }
@@ -177,19 +194,19 @@ resource aws_lambda_function api {
 resource aws_lambda_function post_message {
   description      = "Post Slack message via SNS"
   filename         = "${path.module}/package.zip"
-  function_name    = "${var.app_name}-api-post-message"
+  function_name    = "${local.app_name}-api-post-message"
   handler          = "index.postMessage"
   kms_key_arn      = data.aws_kms_key.key.arn
   role             = aws_iam_role.role.arn
-  runtime          = var.lambda_runtime
+  runtime          = local.lambda_runtime
   source_code_hash = filebase64sha256("${path.module}/package.zip")
-  tags             = var.lambda_tags
+  tags             = local.lambda_tags
   timeout          = 15
 
   environment {
     variables = {
       AWS_SECRET = data.aws_secretsmanager_secret.secret.name
-      DEBUG      = var.debug
+      DEBUG      = local.debug
     }
   }
 }
@@ -197,19 +214,19 @@ resource aws_lambda_function post_message {
 resource aws_lambda_function post_ephemeral {
   description      = "Post Slack ephemeral message via SNS"
   filename         = "${path.module}/package.zip"
-  function_name    = "${var.app_name}-api-post-ephemeral"
+  function_name    = "${local.app_name}-api-post-ephemeral"
   handler          = "index.postEphemeral"
   kms_key_arn      = data.aws_kms_key.key.arn
   role             = aws_iam_role.role.arn
-  runtime          = var.lambda_runtime
+  runtime          = local.lambda_runtime
   source_code_hash = filebase64sha256("${path.module}/package.zip")
-  tags             = var.lambda_tags
+  tags             = local.lambda_tags
   timeout          = 15
 
   environment {
     variables = {
       AWS_SECRET = data.aws_secretsmanager_secret.secret.name
-      DEBUG      = var.debug
+      DEBUG      = local.debug
     }
   }
 }
