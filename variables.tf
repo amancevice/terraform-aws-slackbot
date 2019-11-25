@@ -15,7 +15,7 @@ variable api_stage_name {
 
 variable api_stage_tags {
   description = "Slackbot API tags."
-  type        = "map"
+  type        = map
   default     = {}
 }
 
@@ -50,7 +50,7 @@ variable lambda_runtime {
 
 variable lambda_tags {
   description = "AWS resource tags."
-  type        = "map"
+  type        = map
   default     = {}
 }
 
@@ -66,7 +66,7 @@ variable log_group_retention_in_days {
 
 variable log_group_tags {
   description = "AWS resource tags."
-  type        = "map"
+  type        = map
   default     = {}
 }
 
@@ -86,13 +86,13 @@ variable role_path {
 
 variable role_policy_attachments {
   description = "Additional role policy ARNs to attach to role."
-  type        = "list"
+  type        = list
   default     = []
 }
 
 variable role_tags {
   description = "AWS resource tags."
-  type        = "map"
+  type        = map
   default     = {}
 }
 
