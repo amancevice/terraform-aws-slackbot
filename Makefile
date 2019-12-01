@@ -4,7 +4,6 @@ terraform := latest
 build     := $(shell git describe --tags --always)
 shells    := $(foreach stage,$(stages),shell@$(stage))
 
-
 .PHONY: all clean $(stages) $(shells)
 
 all: node_modules package-lock.json package.zip
