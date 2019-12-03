@@ -28,16 +28,6 @@ locals {
   role_tags                       = var.role_tags
   secret_name                     = var.secret_name
   topic_name                      = coalesce(var.topic_name, var.app_name)
-
-  post_ephemeral_filter_policy = {
-    id   = ["postEphemeral"]
-    type = ["chat"]
-  }
-
-  post_message_filter_policy = {
-    id   = ["postMessage"]
-    type = ["chat"]
-  }
 }
 
 data aws_iam_policy_document assume_role {
@@ -136,18 +126,6 @@ resource aws_cloudwatch_log_group api {
   tags              = local.log_group_tags
 }
 
-resource aws_cloudwatch_log_group post_message {
-  name              = "/aws/lambda/${aws_lambda_function.post_message.function_name}"
-  retention_in_days = local.log_group_retention_in_days
-  tags              = local.log_group_tags
-}
-
-resource aws_cloudwatch_log_group post_ephemeral {
-  name              = "/aws/lambda/${aws_lambda_function.post_ephemeral.function_name}"
-  retention_in_days = local.log_group_retention_in_days
-  tags              = local.log_group_tags
-}
-
 resource aws_iam_role role {
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
   description        = "Slackbot resource access"
@@ -191,46 +169,6 @@ resource aws_lambda_function api {
   }
 }
 
-resource aws_lambda_function post_message {
-  description      = "Post Slack message via SNS"
-  filename         = "${path.module}/package.zip"
-  function_name    = "${local.app_name}-api-post-message"
-  handler          = "index.postMessage"
-  kms_key_arn      = data.aws_kms_key.key.arn
-  role             = aws_iam_role.role.arn
-  runtime          = local.lambda_runtime
-  source_code_hash = filebase64sha256("${path.module}/package.zip")
-  tags             = local.lambda_tags
-  timeout          = 15
-
-  environment {
-    variables = {
-      AWS_SECRET = data.aws_secretsmanager_secret.secret.name
-      DEBUG      = local.debug
-    }
-  }
-}
-
-resource aws_lambda_function post_ephemeral {
-  description      = "Post Slack ephemeral message via SNS"
-  filename         = "${path.module}/package.zip"
-  function_name    = "${local.app_name}-api-post-ephemeral"
-  handler          = "index.postEphemeral"
-  kms_key_arn      = data.aws_kms_key.key.arn
-  role             = aws_iam_role.role.arn
-  runtime          = local.lambda_runtime
-  source_code_hash = filebase64sha256("${path.module}/package.zip")
-  tags             = local.lambda_tags
-  timeout          = 15
-
-  environment {
-    variables = {
-      AWS_SECRET = data.aws_secretsmanager_secret.secret.name
-      DEBUG      = local.debug
-    }
-  }
-}
-
 resource aws_lambda_permission invoke_api {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api.arn
@@ -238,34 +176,6 @@ resource aws_lambda_permission invoke_api {
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*/*"
 }
 
-resource aws_lambda_permission invoke_post_message {
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.post_message.function_name
-  principal     = "sns.amazonaws.com"
-  source_arn    = aws_sns_topic.topic.arn
-}
-
-resource aws_lambda_permission invoke_post_ephemeral {
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.post_ephemeral.function_name
-  principal     = "sns.amazonaws.com"
-  source_arn    = aws_sns_topic.topic.arn
-}
-
 resource aws_sns_topic topic {
   name = local.topic_name
-}
-
-resource aws_sns_topic_subscription post_message_subscription {
-  endpoint      = aws_lambda_function.post_message.arn
-  filter_policy = jsonencode(local.post_message_filter_policy)
-  protocol      = "lambda"
-  topic_arn     = aws_sns_topic.topic.arn
-}
-
-resource aws_sns_topic_subscription post_ephemeral_subscription {
-  endpoint      = aws_lambda_function.post_ephemeral.arn
-  filter_policy = jsonencode(local.post_ephemeral_filter_policy)
-  protocol      = "lambda"
-  topic_arn     = aws_sns_topic.topic.arn
 }
