@@ -43,7 +43,8 @@ module slackbot {
   api_description = "My Slack REST API"
   api_name        = "<my-api>"
   api_stage_name  = "<my-api-stage>"
-  secret_arn      = module.slackbot_secrets.secret_arn
+  api_name        = "<my-app-name>"
+  secret_name     = module.slackbot_secrets.secret_name
   kms_key_id      = module.slackbot_secrets.kms_key_id
 }
 ```
