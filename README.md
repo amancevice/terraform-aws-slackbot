@@ -23,11 +23,11 @@ module slackbot_secret {
   source               = "amancevice/slackbot-secrets/aws"
   kms_key_alias        = "alias/slack/your-kms-key-alias"
   secret_name          = "slack/your-secret-name"
-  slack_bot_token      = "${var.slack_bot_token}"
-  slack_client_id      = "${var.slack_client_id}"
-  slack_client_secret  = "${var.slack_client_secret}"
-  slack_signing_secret = "${var.slack_signing_secret}"
-  slack_user_token     = "${var.slack_user_token}"
+  slack_bot_token      = var.slack_bot_token
+  slack_client_id      = var.slack_client_id
+  slack_client_secret  = var.slack_client_secret
+  slack_signing_secret = var.slack_signing_secret
+  slack_user_token     = var.slack_user_token
 
   // Optional additional secrets
   secrets = {
@@ -38,10 +38,10 @@ module slackbot_secret {
 module slackbot {
   source          = "amancevice/slackbot/aws"
   api_description = "My Slack REST API"
-  api_name        = "<my-api>"
+  api_name        = "<my-api-name>"
   api_stage_name  = "<my-api-stage>"
-  secret_arn      = "${module.slackbot_secret.secret_arn}"
-  kms_key_id      = "${module.slackbot_secret.kms_key_id}"
+  secret_name     = module.slackbot_secrets.secret_name
+  kms_key_id      = module.slackbot_secret.kms_key_id
 }
 ```
 
