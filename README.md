@@ -1,10 +1,5 @@
 # Asynchronous Slackbot
 
-[![Build Status](https://travis-ci.com/amancevice/slackend.svg?branch=master)](https://travis-ci.com/amancevice/slackend)
-[![NPM Version](https://badge.fury.io/js/slackend.svg)](https://badge.fury.io/js/slackend)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/1648179274faf0e45541/test_coverage)](https://codeclimate.com/github/amancevice/slackend/test_coverage)
-[![Maintainability](https://api.codeclimate.com/v1/badges/1648179274faf0e45541/maintainability)](https://codeclimate.com/github/amancevice/slackend/maintainability)
-
 A simple, asynchronous back end for your Slack app.
 
 The app intentionally does very little: it is essentially middleware for [ExpressJS](https://expressjs.com) that accepts an incoming request, verifies its origin, and passes the request to a user-provided callback, where the payload is sent to a queue/trigger for asynchronous processing.
