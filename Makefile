@@ -1,5 +1,5 @@
 RUNTIME   := nodejs12.x
-STAGES    := build test
+STAGES    := build dev test
 TERRAFORM := latest
 CLEANS    := $(foreach STAGE,$(STAGES),clean@$(STAGE))
 IMAGES    := $(foreach STAGE,$(STAGES),image@$(STAGE))
@@ -9,12 +9,15 @@ TIMESTAMP := $(shell date +%s)
 
 .PHONY: default clean clobber test $(CLEANS) $(IMAGES) $(SHELLS)
 
-default: node_modules package-lock.json package.zip image@test
+default: package-lock.json package.zip test
 
 .docker:
 	mkdir -p $@
 
-.docker/$(BUILD)-%: | .docker
+.docker/$(BUILD)-build: package.json *.tf
+.docker/$(BUILD)-dev:   .docker/$(BUILD)-build
+.docker/$(BUILD)-test:  .docker/$(BUILD)-dev
+.docker/$(BUILD)-%:   | .docker
 	docker build \
 	--build-arg RUNTIME=$(RUNTIME) \
 	--build-arg TERRAFORM=$(TERRAFORM) \
@@ -24,26 +27,21 @@ default: node_modules package-lock.json package.zip image@test
 	.
 	cp $@@$(TIMESTAMP) $@
 
-node_modules:
-	npm install
-
 package-lock.json package.zip: .docker/$(BUILD)-build
 	docker run --rm --entrypoint cat $(shell cat $<) $@ > $@
 
-clean@test: clean@build
-clean:      clean@test
+clean: $(CLEANS)
 
-clobber:
+clobber: | .docker
 	-awk {print} .docker/* 2> /dev/null | uniq | xargs docker image rm --force
 	-rm -rf .docker node_modules
 
-image@test: image@build
-image:      image@test
+test: .docker/$(BUILD)-test
 
 $(CLEANS): clean@%:
-	-rm .docker/$(BUILD)-$*
+	-rm -rf .docker/$(BUILD)-$*
 
 $(IMAGES): image@%: .docker/$(BUILD)-%
 
-$(shells): shell@%: .docker/$(build)@%
+$(SHELLS): shell@%: .docker/$(BUILD)-%
 	docker run --rm -it --entrypoint sh $(shell cat $<)

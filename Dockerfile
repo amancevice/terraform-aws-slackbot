@@ -1,15 +1,16 @@
-ARG RUNTIME=nodejs10.x
+ARG RUNTIME=nodejs12.x
 ARG TERRAFORM=latest
 
 FROM lambci/lambda:build-${RUNTIME} AS build
-COPY index.js package*.json /var/task/
+COPY . .
 RUN npm install --production
-RUN zip -r package.zip index.js node_modules package*.json
-RUN npm install
+RUN zip -9r package.zip index.js node_modules package*.json
+
+FROM lambci/lambda:${RUNTIME} AS dev
+COPY --from=build /var/task .
 
 FROM hashicorp/terraform:${TERRAFORM} AS test
-COPY --from=build /var/task/package.zip .
-COPY *.tf /var/task/
+COPY --from=build /var/task .
 ARG AWS_DEFAULT_REGION=us-east-1
 RUN terraform init
 RUN terraform fmt -check
