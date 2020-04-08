@@ -29,7 +29,7 @@ Deploy directly to AWS using this and [`slackbot-secrets`](https://github.com/am
 ```hcl
 module slackbot_secret {
   source               = "amancevice/slackbot-secrets/aws"
-  source               = "~> 17.0"
+  source               = "~> 18.0"
   kms_key_alias        = "alias/slack/your-kms-key-alias"
   secret_name          = "slack/your-secret-name"
   slack_bot_token      = var.slack_bot_token

@@ -11,7 +11,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - run: docker pull hashicorp/terraform:latest
-    - run: docker pull lambci/lambda:build-nodejs12.x
-    - run: docker pull lambci/lambda:nodejs12.x
     - run: make test

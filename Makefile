@@ -1,47 +1,34 @@
+REPO      := amancevice/slackbot
 RUNTIME   := nodejs12.x
-STAGES    := build dev test
+STAGES    := zip dev test
 TERRAFORM := latest
-CLEANS    := $(foreach STAGE,$(STAGES),clean@$(STAGE))
-IMAGES    := $(foreach STAGE,$(STAGES),image@$(STAGE))
-SHELLS    := $(foreach STAGE,$(STAGES),shell@$(STAGE))
-BUILD     := $(shell git describe --tags --always)
-TIMESTAMP := $(shell date +%s)
 
-.PHONY: default clean clobber test $(CLEANS) $(IMAGES) $(SHELLS)
+.PHONY: default clean clobber test $(STAGES)
 
 default: package-lock.json package.zip test
 
 .docker:
 	mkdir -p $@
 
-.docker/$(BUILD)-build: package.json *.tf
-.docker/$(BUILD)-dev:   .docker/$(BUILD)-build
-.docker/$(BUILD)-test:  .docker/$(BUILD)-dev
-.docker/$(BUILD)-%:   | .docker
+.docker/zip: package.json *.tf
+.docker/dev: .docker/zip
+.docker/test: .docker/dev
+.docker/%: | .docker
 	docker build \
 	--build-arg RUNTIME=$(RUNTIME) \
 	--build-arg TERRAFORM=$(TERRAFORM) \
-	--iidfile $@@$(TIMESTAMP) \
-	--tag amancevice/slackbot:$(BUILD)-$* \
+	--iidfile $@ \
+	--tag $(REPO):$* \
 	--target $* \
 	.
-	cp $@@$(TIMESTAMP) $@
 
-package-lock.json package.zip: .docker/$(BUILD)-build
-	docker run --rm --entrypoint cat $(shell cat $<) $@ > $@
+package-lock.json package.zip: .docker/zip
+	docker run --rm --entrypoint cat $$(cat $<) $@ > $@
 
-clean: $(CLEANS)
+clean:
+	rm -rf .docker
 
-clobber: | .docker
-	-awk {print} .docker/* 2> /dev/null | uniq | xargs docker image rm --force
-	-rm -rf .docker node_modules
+clobber: clean
+	docker image ls $(REPO) --quiet | uniq | xargs docker image rm --force
 
-test: .docker/$(BUILD)-test
-
-$(CLEANS): clean@%:
-	-rm -rf .docker/$(BUILD)-$*
-
-$(IMAGES): image@%: .docker/$(BUILD)-%
-
-$(SHELLS): shell@%: .docker/$(BUILD)-%
-	docker run --rm -it --entrypoint sh $(shell cat $<)
+$(STAGES): %: .docker/%
