@@ -38,6 +38,10 @@ variable debug {
   default     = "slackend:*"
 }
 
+variable kms_key_arn {
+  description = "KMS key ARN"
+}
+
 variable lambda_memory_size {
   description = "Memory for Lambda function"
   default     = 1024
@@ -68,10 +72,6 @@ variable log_group_tags {
   description = "AWS resource tags"
   type        = map
   default     = {}
-}
-
-variable kms_key_id {
-  description = "KMS key ID"
 }
 
 variable role_name {

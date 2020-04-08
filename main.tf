@@ -15,7 +15,7 @@ locals {
   app_name                        = var.app_name
   base_url                        = var.base_url
   debug                           = var.debug
-  kms_key_id                      = var.kms_key_id
+  kms_key_arn                     = var.kms_key_arn
   lambda_memory_size              = var.lambda_memory_size
   lambda_runtime                  = var.lambda_runtime
   lambda_tags                     = var.lambda_tags
@@ -45,7 +45,7 @@ data aws_iam_policy_document api {
   statement {
     sid       = "DecryptKmsKey"
     actions   = ["kms:Decrypt"]
-    resources = [data.aws_kms_key.key.arn]
+    resources = [local.kms_key_arn]
   }
 
   statement {
@@ -71,10 +71,6 @@ data aws_iam_policy_document api {
 
     resources = ["*"]
   }
-}
-
-data aws_kms_key key {
-  key_id = local.kms_key_id
 }
 
 data aws_secretsmanager_secret secret {
@@ -151,7 +147,7 @@ resource aws_lambda_function api {
   filename         = "${path.module}/package.zip"
   function_name    = "${local.app_name}-api"
   handler          = "index.handler"
-  kms_key_arn      = data.aws_kms_key.key.arn
+  kms_key_arn      = local.kms_key_arn
   memory_size      = local.lambda_memory_size
   role             = aws_iam_role.role.arn
   runtime          = local.lambda_runtime
