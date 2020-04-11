@@ -27,9 +27,9 @@ Deploy directly to AWS using this and [`slackbot-secrets`](https://github.com/am
 
 
 ```hcl
-module slackbot_secret {
+module slackbot_secrets {
   source               = "amancevice/slackbot-secrets/aws"
-  source               = "~> 18.0"
+  source               = "~> 3.0"
   kms_key_alias        = "alias/slack/your-kms-key-alias"
   secret_name          = "slack/your-secret-name"
   slack_bot_token      = var.slack_bot_token
@@ -46,12 +46,12 @@ module slackbot_secret {
 
 module slackbot {
   source          = "amancevice/slackbot/aws"
-  version         = "~> 3.0"
+  version         = "~> 18.0"
   api_description = "My Slack REST API"
   api_name        = "<my-api-name>"
   api_stage_name  = "<my-api-stage>"
   secret_name     = module.slackbot_secrets.secret.name
-  kms_key_arn     = module.slackbot_secret.kms_key.arn
+  kms_key_arn     = module.slackbot_secrets.kms_key.arn
   // ... etc
 }
 ```
@@ -59,6 +59,20 @@ module slackbot {
 ## Featured Plugins
 
 Some plugins are provided that can be hooked into the Slackbot out-of-the-box:
+
+**Chat**
+
+```hcl
+module slackbot_chat {
+  source         = "amancevice/slackbot-chat/aws"
+  version        = "~> 1.0"
+  api_name       = module.slackbot.api.name
+  chat_method    = "postMessage | postEphemeral"
+  role_arn       = module.slackbot.role.arn
+  secret_name    = "<secretsmanager-secret-name>"
+  topic_arn      = module.slackbot.topic.arn
+}
+```
 
 **Slash Command**
 
