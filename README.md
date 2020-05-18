@@ -1,5 +1,8 @@
 # Asynchronous Slackbot
 
+[![terraform](https://img.shields.io/github/v/tag/amancevice/terraform-aws-slackbot?color=62f&label=version&logo=terraform&style=flat-square)](https://registry.terraform.io/modules/amancevice/serverless-pypi/aws)
+[![build](https://img.shields.io/github/workflow/status/amancevice/terraform-aws-slackbot/Test?logo=github&style=flat-square)](https://github.com/amancevice/terraform-aws-slackbot/actions)
+
 A simple, asynchronous back end for your Slack app.
 
 The app intentionally does very little: it is essentially middleware for [ExpressJS](https://expressjs.com) that accepts an incoming request, verifies its origin, and passes the request to a user-provided callback, where the payload is sent to a queue/trigger for asynchronous processing.
