@@ -7,7 +7,7 @@ package.zip: package.iid package-lock.json
 package-lock.json: package.iid
 	docker run --rm --entrypoint cat $$(cat $<) $@ > $@
 
-package.iid:
+package.iid: index.js package.json Dockerfile
 	docker build --build-arg RUNTIME=$(RUNTIME) --iidfile $@ --tag $(REPO) .
 
 .terraform:
