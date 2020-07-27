@@ -8,9 +8,9 @@
 # .tfvars files
 *.tfvars
 
-**/.docker/
 **/.terraform/
 **/node_modules/
 *.env
+*.iid
 *.zip
 !package.zip
