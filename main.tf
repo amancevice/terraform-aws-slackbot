@@ -8,26 +8,141 @@ terraform {
 }
 
 locals {
-  api_description                 = var.api_description
-  api_endpoint_configuration_type = var.api_endpoint_configuration_type
-  api_name                        = coalesce(var.api_name, var.app_name)
-  api_stage_name                  = var.api_stage_name
-  app_name                        = var.app_name
-  base_url                        = var.base_url
-  debug                           = var.debug
-  kms_key_arn                     = var.kms_key_arn
-  lambda_memory_size              = var.lambda_memory_size
-  lambda_runtime                  = var.lambda_runtime
-  lambda_tags                     = var.lambda_tags
-  lambda_timeout                  = var.lambda_timeout
-  log_group_retention_in_days     = var.log_group_retention_in_days
-  log_group_tags                  = var.log_group_tags
-  role_name                       = coalesce(var.role_name, var.app_name)
-  role_path                       = var.role_path
-  role_policy_attachments         = var.role_policy_attachments
-  role_tags                       = var.role_tags
-  secret_name                     = var.secret_name
-  topic_name                      = coalesce(var.topic_name, var.app_name)
+  base_url = var.base_url
+  debug    = var.debug
+
+  lambda = {
+    description   = var.lambda_description
+    function_name = var.lambda_function_name
+    filename      = "${path.module}/package.zip"
+    handler       = var.lambda_handler
+    kms_key_arn   = var.lambda_kms_key_arn
+    memory_size   = var.lambda_memory_size
+    publish       = var.lambda_publish
+    runtime       = var.lambda_runtime
+    tags          = var.lambda_tags
+    timeout       = var.lambda_timeout
+
+    permissions = coalescelist(var.lambda_permissions, [
+      "${local.http_api.execution_arn}/*/*${local.base_url}*",
+    ])
+  }
+
+  log_group = {
+    retention_in_days = var.log_group_retention_in_days
+    tags              = var.log_group_tags
+  }
+
+  http_api = {
+    execution_arn = var.http_api_execution_arn
+    id            = var.http_api_id
+  }
+
+  role = {
+    description = var.role_description
+    name        = var.role_name
+    path        = var.role_path
+    tags        = var.role_tags
+  }
+
+  secret = {
+    name = var.secret_name
+  }
+
+  topic = {
+    name = var.topic_name
+  }
+}
+
+# HTTP API
+
+resource aws_apigatewayv2_integration proxy {
+  api_id               = local.http_api.id
+  connection_type      = "INTERNET"
+  description          = "Lambda example"
+  integration_method   = "POST"
+  integration_type     = "AWS_PROXY"
+  integration_uri      = aws_lambda_function.api.invoke_arn
+  passthrough_behavior = "WHEN_NO_MATCH"
+  timeout_milliseconds = 3000
+
+  lifecycle {
+    ignore_changes = [passthrough_behavior]
+  }
+}
+
+resource aws_apigatewayv2_route post_callbacks {
+  api_id             = local.http_api.id
+  route_key          = "POST ${local.base_url}callbacks"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
+resource aws_apigatewayv2_route post_events {
+  api_id             = local.http_api.id
+  route_key          = "POST ${local.base_url}events"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
+resource aws_apigatewayv2_route get_oauth {
+  api_id             = local.http_api.id
+  route_key          = "GET ${local.base_url}oauth"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
+resource aws_apigatewayv2_route post_slash_cmd {
+  api_id             = local.http_api.id
+  route_key          = "POST ${local.base_url}slash/{proxy+}"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
+# LOG GROUPS
+
+resource aws_cloudwatch_log_group logs {
+  name              = "/aws/lambda/${aws_lambda_function.api.function_name}"
+  retention_in_days = local.log_group.retention_in_days
+  tags              = local.log_group.tags
+}
+
+# LAMBDA FUNCTIONS
+
+resource aws_lambda_function api {
+  description      = local.lambda.description
+  filename         = local.lambda.filename
+  function_name    = local.lambda.function_name
+  handler          = "index.handler"
+  kms_key_arn      = local.lambda.kms_key_arn
+  memory_size      = local.lambda.memory_size
+  publish          = local.lambda.publish
+  role             = aws_iam_role.role.arn
+  runtime          = local.lambda.runtime
+  source_code_hash = filebase64sha256(local.lambda.filename)
+  tags             = local.lambda.tags
+  timeout          = local.lambda.timeout
+
+  environment {
+    variables = {
+      AWS_SECRET        = local.secret.name
+      AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
+      BASE_URL          = local.base_url
+      DEBUG             = local.debug
+    }
+  }
+}
+
+# SNS TOPIC
+
+resource aws_sns_topic topic {
+  name = local.topic.name
+}
+
+# IAM
+
+data aws_secretsmanager_secret secret {
+  name = local.secret.name
 }
 
 data aws_iam_policy_document assume_role {
@@ -45,7 +160,7 @@ data aws_iam_policy_document api {
   statement {
     sid       = "DecryptKmsKey"
     actions   = ["kms:Decrypt"]
-    resources = [local.kms_key_arn]
+    resources = [local.lambda.kms_key_arn]
   }
 
   statement {
@@ -73,61 +188,12 @@ data aws_iam_policy_document api {
   }
 }
 
-data aws_secretsmanager_secret secret {
-  name = local.secret_name
-}
-
-resource aws_api_gateway_deployment api {
-  depends_on  = [aws_api_gateway_integration.proxy_any]
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  stage_name  = local.api_stage_name
-}
-
-resource aws_api_gateway_integration proxy_any {
-  content_handling        = "CONVERT_TO_TEXT"
-  http_method             = aws_api_gateway_method.any.http_method
-  integration_http_method = "POST"
-  resource_id             = aws_api_gateway_resource.proxy.id
-  rest_api_id             = aws_api_gateway_rest_api.api.id
-  timeout_milliseconds    = 3000
-  type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.api.invoke_arn
-}
-
-resource aws_api_gateway_method any {
-  authorization = "NONE"
-  http_method   = "ANY"
-  resource_id   = aws_api_gateway_resource.proxy.id
-  rest_api_id   = aws_api_gateway_rest_api.api.id
-}
-
-resource aws_api_gateway_resource proxy {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
-  path_part   = "{proxy+}"
-}
-
-resource aws_api_gateway_rest_api api {
-  description = local.api_description
-  name        = local.api_name
-
-  endpoint_configuration {
-    types = [local.api_endpoint_configuration_type]
-  }
-}
-
-resource aws_cloudwatch_log_group api {
-  name              = "/aws/lambda/${aws_lambda_function.api.function_name}"
-  retention_in_days = local.log_group_retention_in_days
-  tags              = local.log_group_tags
-}
-
 resource aws_iam_role role {
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
-  description        = "Slackbot resource access"
-  name               = local.role_name
-  path               = local.role_path
-  tags               = local.role_tags
+  description        = local.role.description
+  name               = local.role.name
+  path               = local.role.path
+  tags               = local.role.tags
 }
 
 resource aws_iam_role_policy api {
@@ -136,42 +202,11 @@ resource aws_iam_role_policy api {
   policy = data.aws_iam_policy_document.api.json
 }
 
-resource aws_iam_role_policy_attachment additional_policies {
-  count      = length(local.role_policy_attachments)
-  role       = aws_iam_role.role.name
-  policy_arn = element(local.role_policy_attachments, count.index)
-}
-
-resource aws_lambda_function api {
-  description      = "Slack request handler"
-  filename         = "${path.module}/package.zip"
-  function_name    = "${local.app_name}-api"
-  handler          = "index.handler"
-  kms_key_arn      = local.kms_key_arn
-  memory_size      = local.lambda_memory_size
-  role             = aws_iam_role.role.arn
-  runtime          = local.lambda_runtime
-  source_code_hash = filebase64sha256("${path.module}/package.zip")
-  tags             = local.lambda_tags
-  timeout          = local.lambda_timeout
-
-  environment {
-    variables = {
-      AWS_SECRET        = data.aws_secretsmanager_secret.secret.name
-      AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
-      BASE_URL          = local.base_url
-      DEBUG             = local.debug
-    }
-  }
-}
-
 resource aws_lambda_permission invoke_api {
+  count         = length(local.lambda.permissions)
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api.arn
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*/*"
-}
-
-resource aws_sns_topic topic {
-  name = local.topic_name
+  source_arn    = element(local.lambda.permissions, count.index)
+  statement_id  = "AllowAPIGatewayV2-${count.index}"
 }

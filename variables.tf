@@ -1,50 +1,55 @@
-variable api_description {
-  description = "Slackbot API description"
-  default     = "Slackbot REST API"
-}
-
-variable api_name {
-  description = "Slackbot API name"
-  default     = ""
-}
-
-variable api_stage_name {
-  description = "Slackbot API stage"
-  default     = "prod"
-}
-
-variable api_stage_tags {
-  description = "Slackbot API tags"
-  type        = map
-  default     = {}
-}
-
-variable api_endpoint_configuration_type {
-  description = "Slackbot API endpoint type"
-  default     = "EDGE"
-}
-
-variable app_name {
-  description = "Slackbot name"
-}
-
 variable base_url {
-  description = "REST API base URL"
+  description = "REST API base url (must begin and end with /)"
   default     = "/"
 }
 
 variable debug {
-  description = "Lambda function logger config"
+  description = "Node debug logger config"
   default     = "slackend:*"
 }
 
-variable kms_key_arn {
-  description = "KMS key ARN"
+variable http_api_id {
+  description = "API Gateway v2 HTTP API ID"
+}
+
+variable http_api_execution_arn {
+  description = "API Gateway v2 HTTP API execution ARN"
+}
+
+variable lambda_description {
+  description = "Lambda function description"
+  default     = "Slack request handler"
+}
+
+variable lambda_function_name {
+  description = "Lambda function name"
+}
+
+variable lambda_handler {
+  description = "Lambda handler signature"
+  default     = "index.handler"
+}
+
+variable lambda_kms_key_arn {
+  description = "Lambda function KMS key ARN"
+  default     = null
+}
+
+variable lambda_publish {
+  description = "Lambda publish flag"
+  default     = false
+  type        = bool
 }
 
 variable lambda_memory_size {
   description = "Lambda function memory size"
   default     = 1024
+}
+
+variable lambda_permissions {
+  description = "Lambda permissions for API Gateway v2 HTTP API"
+  type        = list(string)
+  default     = []
 }
 
 variable lambda_runtime {
@@ -65,7 +70,7 @@ variable lambda_timeout {
 
 variable log_group_retention_in_days {
   description = "CloudWatch log group retention in days"
-  default     = 30
+  default     = null
 }
 
 variable log_group_tags {
@@ -74,20 +79,18 @@ variable log_group_tags {
   default     = {}
 }
 
+variable role_description {
+  description = "Lambda role description"
+  default     = "Slackbot resource access"
+}
+
 variable role_name {
   description = "Lambda role name"
-  default     = ""
 }
 
 variable role_path {
   description = "Lambda role path"
-  default     = "/"
-}
-
-variable role_policy_attachments {
-  description = "Additional role policy ARNs to attach to role"
-  type        = list
-  default     = []
+  default     = null
 }
 
 variable role_tags {
@@ -102,5 +105,4 @@ variable secret_name {
 
 variable topic_name {
   description = "SNS topic name"
-  default     = null
 }
