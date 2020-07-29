@@ -61,7 +61,7 @@ module slackbot {
 
   # Optional…
 
-  base_url                    = "/my/base/url/"  # <= must begin and end with "/"
+  base_path                   = "/my/base/path"
   debug                       = "slackend:*"
   lambda_description          = "My lambda description"
   lambda_handler              = "index.handler"
