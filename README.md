@@ -50,7 +50,7 @@ module slackbot {
   source  = "amancevice/slackbot/aws"
   version = "~> 19.0"
 
-  # Required…
+  # Required
 
   http_api_execution_arn = aws_apigatewayv2_api.http_api.execution_arn
   http_api_id            = aws_apigatewayv2_api.http_api.id
@@ -59,7 +59,7 @@ module slackbot {
   secret_name            = module.slackbot_secrets.secret.name
   topic_name             = "my-topic-name"
 
-  # Optional…
+  # Optional
 
   base_path                   = "/my/base/path"
   debug                       = "slackend:*"
@@ -208,51 +208,59 @@ The following examples show how a subscription might me made in Terraform:
 
 **Callback**
 
-```hcl
-locals {
-  filter_policy = {
+```terraform
+resource aws_sns_topic_subscription subscription {
+  endpoint  = "<subscriber-arn>"
+  protocol  = "<subscription-protocol>"
+  topic_arn = "<sns-topic-arn>"
+  
+  filter_policy = jsonencode({
     type = ["callback"]
     id   = ["<callback-id>", "…"]
-  }
-}
-
-resource aws_sns_topic_subscription subscription {
-  endpoint      = "<subscriber-arn>"
-  filter_policy = jsonencode(local.filter_policy)
-  protocol      = "<subscription-protocol>"
-  topic_arn     = "<sns-topic-arn>"
+  })
 }
 ```
 
 **Event**
 
-```hcl
+```terraform
 resource aws_sns_topic_subscription subscription {
-  endpoint      = "<subscriber-arn>"
-  filter_policy = jsonencode({ type = ["event"] id = ["<event-type>"] })
-  protocol      = "<subscription-protocol>"
-  topic_arn     = "<sns-topic-arn>"
+  endpoint  = "<subscriber-arn>"
+  protocol  = "<subscription-protocol>"
+  topic_arn = "<sns-topic-arn>"
+  
+  filter_policy = jsonencode({
+    type = ["event"]
+    id   = ["<event-type>"]
+  })
 }
 ```
 
 **OAuth**
 
-```hcl
+```terraform
 resource aws_sns_topic_subscription subscription {
-  endpoint      = "<subscriber-arn>"
-  filter_policy = jsonencode({ type = ["oauth"] })
-  protocol      = "<subscription-protocol>"
-  topic_arn     = "<sns-topic-arn>"
+  endpoint  = "<subscriber-arn>"
+  protocol  = "<subscription-protocol>"
+  topic_arn = "<sns-topic-arn>"
+
+  filter_policy = jsonencode({
+    type = ["oauth"]
+  })
 }
 ```
 
 **Slash Command**
 
-```hcl
+```terraform
 resource aws_sns_topic_subscription subscription {
-  endpoint      = "<subscriber-arn>"
-  filter_policy = jsonencode({ type = ["slash"], id = ["<slash-cmd>"] })
-  protocol      = "<subscription-protocol>"
-  topic_arn     = "<sns-topic-arn>"
+  endpoint  = "<subscriber-arn>"
+  protocol  = "<subscription-protocol>"
+  topic_arn = "<sns-topic-arn>"
+  
+  filter_policy = jsonencode({
+    type = ["slash"]
+    id   = ["<slash-cmd>"] 
+  })
 }
 ```
