@@ -8,8 +8,8 @@ terraform {
 }
 
 locals {
-  base_url = var.base_url
-  debug    = var.debug
+  base_path = "/${trim(var.base_path, "/")}"
+  debug     = var.debug
 
   lambda = {
     description   = var.lambda_description
@@ -24,7 +24,7 @@ locals {
     timeout       = var.lambda_timeout
 
     permissions = coalescelist(var.lambda_permissions, [
-      "${local.http_api.execution_arn}/*/*${local.base_url}*",
+      "${local.http_api.execution_arn}/*/*${local.base_path == "/" ? "/" : "${local.base_path}/"}*",
     ])
   }
 
@@ -80,21 +80,21 @@ resource aws_apigatewayv2_route post_callbacks {
 
 resource aws_apigatewayv2_route post_events {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.base_url}events"
+  route_key          = "POST ${local.base_path}/events"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource aws_apigatewayv2_route get_oauth {
   api_id             = local.http_api.id
-  route_key          = "GET ${local.base_url}oauth"
+  route_key          = "GET ${local.base_path}/oauth"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource aws_apigatewayv2_route post_slash_cmd {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.base_url}slash/{proxy+}"
+  route_key          = "POST ${local.base_path}/slash/{proxy+}"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
@@ -127,7 +127,7 @@ resource aws_lambda_function api {
     variables = {
       AWS_SECRET        = local.secret.name
       AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
-      BASE_URL          = local.base_url
+      BASE_PATH         = local.base_path
       DEBUG             = local.debug
     }
   }

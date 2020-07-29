@@ -1,5 +1,5 @@
-variable base_url {
-  description = "REST API base url (must begin and end with /)"
+variable base_path {
+  description = "REST API base path"
   default     = "/"
 }
 
