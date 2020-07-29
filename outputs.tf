@@ -18,6 +18,11 @@ output role {
   value       = aws_iam_role.role
 }
 
+output secret {
+  description = "SecretsManager secret"
+  value       = data.aws_secretsmanager_secret.secret
+}
+
 output topic {
   description = "Slackbot SNS topic"
   value       = aws_sns_topic.topic
