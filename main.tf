@@ -8,7 +8,7 @@ terraform {
 }
 
 locals {
-  base_path = "/${trim(var.base_path, "/")}"
+  base_path = trim(var.base_path, "/") == "" ? "/" : "/${trim(var.base_path, "/")}/"
   debug     = var.debug
 
   lambda = {
@@ -24,7 +24,7 @@ locals {
     timeout       = var.lambda_timeout
 
     permissions = coalescelist(var.lambda_permissions, [
-      "${local.http_api.execution_arn}/*/*${local.base_path == "/" ? "/" : "${local.base_path}/"}*",
+      "${local.http_api.execution_arn}/*/*${local.base_path}*",
     ])
   }
 
@@ -73,28 +73,28 @@ resource aws_apigatewayv2_integration proxy {
 
 resource aws_apigatewayv2_route post_callbacks {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.base_url}callbacks"
+  route_key          = "POST ${local.base_path}callbacks"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource aws_apigatewayv2_route post_events {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.base_path}/events"
+  route_key          = "POST ${local.base_path}events"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource aws_apigatewayv2_route get_oauth {
   api_id             = local.http_api.id
-  route_key          = "GET ${local.base_path}/oauth"
+  route_key          = "GET ${local.base_path}oauth"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource aws_apigatewayv2_route post_slash_cmd {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.base_path}/slash/{proxy+}"
+  route_key          = "POST ${local.base_path}slash/{proxy+}"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
@@ -127,7 +127,7 @@ resource aws_lambda_function api {
     variables = {
       AWS_SECRET        = local.secret.name
       AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
-      BASE_PATH         = local.base_path
+      BASE_PATH         = trimsuffix(local.base_path, "/")
       DEBUG             = local.debug
     }
   }

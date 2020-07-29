@@ -1,6 +1,10 @@
 REPO    := amancevice/$(shell basename $$PWD)
 RUNTIME := nodejs12.x
 
+validate: package.zip | .terraform
+	terraform fmt -check
+	terraform validate
+
 package.zip: package.iid package-lock.json
 	docker run --rm --entrypoint cat $$(cat $<) $@ > $@
 
@@ -20,9 +24,5 @@ clean:
 
 clobber: clean
 	docker image ls --quiet $(REPO) | uniq | xargs docker image rm --force
-
-validate: | .terraform
-	terraform fmt -check
-	terraform validate
 
 zip: package.zip
