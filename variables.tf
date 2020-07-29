@@ -29,12 +29,12 @@ variable app_name {
 }
 
 variable base_url {
-  description = "Base URL for handling slackend requests"
+  description = "REST API base URL"
   default     = "/"
 }
 
 variable debug {
-  description = "Debug log string"
+  description = "Lambda function logger config"
   default     = "slackend:*"
 }
 
@@ -43,7 +43,7 @@ variable kms_key_arn {
 }
 
 variable lambda_memory_size {
-  description = "Memory for Lambda function"
+  description = "Lambda function memory size"
   default     = 1024
 }
 
@@ -53,34 +53,34 @@ variable lambda_runtime {
 }
 
 variable lambda_tags {
-  description = "AWS resource tags"
-  type        = map
+  description = "Lambda function resource tags"
+  type        = map(string)
   default     = {}
 }
 
 variable lambda_timeout {
-  description = "Timeout in seconds for Lambda function"
+  description = "Lambda function timeout in seconds"
   default     = 3
 }
 
 variable log_group_retention_in_days {
-  description = "Days to retain logs in CloudWatch"
+  description = "CloudWatch log group retention in days"
   default     = 30
 }
 
 variable log_group_tags {
-  description = "AWS resource tags"
-  type        = map
+  description = "CloudWatch log group resource tags"
+  type        = map(string)
   default     = {}
 }
 
 variable role_name {
-  description = "Name for Slackbot role"
+  description = "Lambda role name"
   default     = ""
 }
 
 variable role_path {
-  description = "Path for Slackbot role"
+  description = "Lambda role path"
   default     = "/"
 }
 
@@ -91,8 +91,8 @@ variable role_policy_attachments {
 }
 
 variable role_tags {
-  description = "AWS resource tags"
-  type        = map
+  description = "Lambda role resource tags"
+  type        = map(string)
   default     = {}
 }
 
@@ -101,6 +101,6 @@ variable secret_name {
 }
 
 variable topic_name {
-  description = "Slackbot SNS topic name"
-  default     = ""
+  description = "SNS topic name"
+  default     = null
 }
