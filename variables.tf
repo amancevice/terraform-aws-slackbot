@@ -1,5 +1,5 @@
 variable base_path {
-  description = "REST API base path"
+  description = "Slack API base path"
   default     = "/"
 }
 
@@ -14,6 +14,11 @@ variable http_api_id {
 
 variable http_api_execution_arn {
   description = "API Gateway v2 HTTP API execution ARN"
+}
+
+variable http_api_route_prefix {
+  description = "API Gateway v2 HTTP API route prefix"
+  default     = "/"
 }
 
 variable lambda_description {
