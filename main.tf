@@ -93,6 +93,13 @@ resource aws_apigatewayv2_route get_health {
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
+resource aws_apigatewayv2_route head_health {
+  api_id             = local.http_api.id
+  route_key          = "HEAD ${local.http_api.route_prefix}health"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
 resource aws_apigatewayv2_route get_oauth {
   api_id             = local.http_api.id
   route_key          = "GET ${local.http_api.route_prefix}oauth"
