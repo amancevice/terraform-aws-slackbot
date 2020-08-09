@@ -3,7 +3,7 @@ RUNTIME := nodejs12.x
 
 validate: package.zip | .terraform
 	terraform fmt -check
-	terraform validate
+	AWS_REGION=us-east-1 terraform validate
 
 package.zip: package.iid package-lock.json
 	docker run --rm --entrypoint cat $$(cat $<) $@ > $@
