@@ -107,6 +107,13 @@ resource aws_apigatewayv2_route get_oauth {
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
+resource aws_apigatewayv2_route get_oauth_v2 {
+  api_id             = local.http_api.id
+  route_key          = "GET ${local.http_api.route_prefix}oauth/v2"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
 resource aws_apigatewayv2_route post_slash_cmd {
   api_id             = local.http_api.id
   route_key          = "POST ${local.http_api.route_prefix}slash/{proxy+}"
