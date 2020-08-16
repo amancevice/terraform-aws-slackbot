@@ -34,9 +34,10 @@ locals {
   }
 
   http_api = {
-    execution_arn = var.http_api_execution_arn
-    id            = var.http_api_id
-    route_prefix  = var.http_api_route_prefix
+    execution_arn           = var.http_api_execution_arn
+    id                      = var.http_api_id
+    integration_description = var.http_api_integration_description
+    route_prefix            = var.http_api_route_prefix
   }
 
   role = {
@@ -60,7 +61,7 @@ locals {
 resource aws_apigatewayv2_integration proxy {
   api_id               = local.http_api.id
   connection_type      = "INTERNET"
-  description          = "Lambda example"
+  description          = local.http_api.integration_description
   integration_method   = "POST"
   integration_type     = "AWS_PROXY"
   integration_uri      = aws_lambda_function.api.invoke_arn

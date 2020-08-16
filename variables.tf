@@ -8,12 +8,17 @@ variable debug {
   default     = "slackend:*"
 }
 
+variable http_api_execution_arn {
+  description = "API Gateway v2 HTTP API execution ARN"
+}
+
 variable http_api_id {
   description = "API Gateway v2 HTTP API ID"
 }
 
-variable http_api_execution_arn {
-  description = "API Gateway v2 HTTP API execution ARN"
+variable http_api_integration_description {
+  description = "API Gateway v2 HTTP API integration description"
+  default     = "Slack request Lambda integration"
 }
 
 variable http_api_route_prefix {
