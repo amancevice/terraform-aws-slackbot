@@ -24,7 +24,12 @@ locals {
     timeout       = var.lambda_timeout
 
     permissions = coalescelist(var.lambda_permissions, [
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}*",
+      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}health",
+      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}oauth",
+      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}oauth/v2",
+      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}callbacks",
+      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}events",
+      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}slash/*",
     ])
   }
 
