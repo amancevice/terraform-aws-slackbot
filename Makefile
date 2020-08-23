@@ -20,9 +20,9 @@ package.iid: index.js package.json Dockerfile
 .PHONY: clean clobber validate zip
 
 clean:
-	rm -rf package.iid
+	docker image ls --quiet $(REPO) | uniq | xargs docker image rm --force
 
 clobber: clean
-	docker image ls --quiet $(REPO) | uniq | xargs docker image rm --force
+	rm -rf package.iid
 
 zip: package.zip
