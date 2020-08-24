@@ -25,6 +25,7 @@ locals {
 
     permissions = coalescelist(var.lambda_permissions, [
       "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}health",
+      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}install",
       "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}oauth",
       "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}oauth/v2",
       "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}callbacks",
@@ -95,6 +96,20 @@ resource aws_apigatewayv2_route post_events {
 resource aws_apigatewayv2_route get_health {
   api_id             = local.http_api.id
   route_key          = "GET ${local.http_api.route_prefix}health"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
+resource aws_apigatewayv2_route get_install {
+  api_id             = local.http_api.id
+  route_key          = "GET ${local.http_api.route_prefix}install"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+}
+
+resource aws_apigatewayv2_route head_install {
+  api_id             = local.http_api.id
+  route_key          = "HEAD ${local.http_api.route_prefix}install"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
