@@ -9,7 +9,7 @@ terraform {
 
     archive = {
       source  = "hashicorp/archive"
-      version = "~> 1.2"
+      version = "~> 2.0"
     }
   }
 }
@@ -71,78 +71,73 @@ locals {
 
 # HTTP API
 
-resource aws_apigatewayv2_integration proxy {
+resource "aws_apigatewayv2_integration" "proxy" {
   api_id               = local.http_api.id
   connection_type      = "INTERNET"
   description          = local.http_api.integration_description
   integration_method   = "POST"
   integration_type     = "AWS_PROXY"
   integration_uri      = aws_lambda_function.api.invoke_arn
-  passthrough_behavior = "WHEN_NO_MATCH"
   timeout_milliseconds = 3000
-
-  lifecycle {
-    ignore_changes = [passthrough_behavior]
-  }
 }
 
-resource aws_apigatewayv2_route post_callbacks {
+resource "aws_apigatewayv2_route" "post_callbacks" {
   api_id             = local.http_api.id
   route_key          = "POST ${local.http_api.route_prefix}callbacks"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route post_events {
+resource "aws_apigatewayv2_route" "post_events" {
   api_id             = local.http_api.id
   route_key          = "POST ${local.http_api.route_prefix}events"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route get_health {
+resource "aws_apigatewayv2_route" "get_health" {
   api_id             = local.http_api.id
   route_key          = "GET ${local.http_api.route_prefix}health"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route get_install {
+resource "aws_apigatewayv2_route" "get_install" {
   api_id             = local.http_api.id
   route_key          = "GET ${local.http_api.route_prefix}install"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route head_install {
+resource "aws_apigatewayv2_route" "head_install" {
   api_id             = local.http_api.id
   route_key          = "HEAD ${local.http_api.route_prefix}install"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route head_health {
+resource "aws_apigatewayv2_route" "head_health" {
   api_id             = local.http_api.id
   route_key          = "HEAD ${local.http_api.route_prefix}health"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route get_oauth {
+resource "aws_apigatewayv2_route" "get_oauth" {
   api_id             = local.http_api.id
   route_key          = "GET ${local.http_api.route_prefix}oauth"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route get_oauth_v2 {
+resource "aws_apigatewayv2_route" "get_oauth_v2" {
   api_id             = local.http_api.id
   route_key          = "GET ${local.http_api.route_prefix}oauth/v2"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-resource aws_apigatewayv2_route post_slash_cmd {
+resource "aws_apigatewayv2_route" "post_slash_cmd" {
   api_id             = local.http_api.id
   route_key          = "POST ${local.http_api.route_prefix}slash/{proxy+}"
   authorization_type = "NONE"
@@ -151,7 +146,7 @@ resource aws_apigatewayv2_route post_slash_cmd {
 
 # LOG GROUPS
 
-resource aws_cloudwatch_log_group logs {
+resource "aws_cloudwatch_log_group" "logs" {
   name              = "/aws/lambda/${aws_lambda_function.api.function_name}"
   retention_in_days = local.log_group.retention_in_days
   tags              = local.log_group.tags
@@ -159,7 +154,7 @@ resource aws_cloudwatch_log_group logs {
 
 # LAMBDA FUNCTIONS
 
-resource aws_lambda_function api {
+resource "aws_lambda_function" "api" {
   description      = local.lambda.description
   filename         = local.lambda.filename
   function_name    = local.lambda.function_name
@@ -185,17 +180,17 @@ resource aws_lambda_function api {
 
 # SNS TOPIC
 
-resource aws_sns_topic topic {
+resource "aws_sns_topic" "topic" {
   name = local.topic.name
 }
 
 # IAM
 
-data aws_secretsmanager_secret secret {
+data "aws_secretsmanager_secret" "secret" {
   name = local.secret.name
 }
 
-data aws_iam_policy_document assume_role {
+data "aws_iam_policy_document" "assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
 
@@ -206,7 +201,7 @@ data aws_iam_policy_document assume_role {
   }
 }
 
-data aws_iam_policy_document api {
+data "aws_iam_policy_document" "api" {
   statement {
     sid       = "DecryptKmsKey"
     actions   = ["kms:Decrypt"]
@@ -238,7 +233,7 @@ data aws_iam_policy_document api {
   }
 }
 
-resource aws_iam_role role {
+resource "aws_iam_role" "role" {
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
   description        = local.role.description
   name               = local.role.name
@@ -246,13 +241,13 @@ resource aws_iam_role role {
   tags               = local.role.tags
 }
 
-resource aws_iam_role_policy api {
+resource "aws_iam_role_policy" "api" {
   name   = "api"
   role   = aws_iam_role.role.id
   policy = data.aws_iam_policy_document.api.json
 }
 
-resource aws_lambda_permission invoke_api {
+resource "aws_lambda_permission" "invoke_api" {
   count         = length(local.lambda.permissions)
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api.arn
