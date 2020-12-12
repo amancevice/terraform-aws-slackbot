@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "aws-serverless-express": "^3.3.8",
-    "slackend": "^4.5.0"
+    "@vendia/serverless-express": "^3.4.0",
+    "slackend": "^4.5.1"
   },
   "devDependencies": {
     "aws-sdk": "^2.720.0",

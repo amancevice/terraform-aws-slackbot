@@ -13,4 +13,5 @@
 *.env
 *.iid
 *.zip
+.terraform.lock.hcl
 !package.zip
