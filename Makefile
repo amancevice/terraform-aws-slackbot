@@ -22,10 +22,11 @@ package.iid: index.js package.json Dockerfile
 	terraform init
 
 clean:
-	docker image ls --quiet $(REPO) | uniq | xargs docker image rm --force
+	REPO=$(REPO) docker-compose down
+	rm -rf package.iid
 
 clobber: clean
-	rm -rf package.iid
+	REPO=$(REPO) docker-compose down --rmi all --volumes
 
 down:
 	REPO=$(REPO) docker-compose down
