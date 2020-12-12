@@ -38,17 +38,9 @@ resource "aws_apigatewayv2_api" "http_api" {
   # …
 }
 
-# WARNING Be extremely cautious when using this module
-# NEVER store secrets in plaintext and encrypt your remote state
-module "slackbot_secrets" {
-  source  = "amancevice/slackbot-secrets/aws"
-  version = "~> 5.0"
-  # …
-}
-
 module "slackbot" {
   source  = "amancevice/slackbot/aws"
-  version = "~> 19.0"
+  version = "~> 20.1"
 
   # Required
 
@@ -89,6 +81,24 @@ module "slackbot" {
   role_tags = {
     # …
   }
+}
+
+# WARNING Be extremely cautious when using this module
+# NEVER store secrets in plaintext and encrypt your remote state
+# I recommend applying this module in a workspace without a remote backend
+module "slackbot_secrets" {
+  source  = "amancevice/slackbot-secrets/aws"
+  version = "~> 7.0"
+
+  secret                   = module.slackbot.secret
+  slack_client_id          = "…"
+  slack_client_secret      = "…"
+  slack_oauth_error_uri    = "…"
+  slack_oauth_redirect_uri = "…"
+  slack_oauth_success_uri  = "…"
+  slack_signing_secret     = "…"
+  slack_signing_version    = "…"
+  slack_token              = "…"
 }
 ```
 
