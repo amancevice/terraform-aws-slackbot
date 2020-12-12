@@ -32,7 +32,7 @@ Deploy directly to AWS using this and [`slackbot-secrets`](https://github.com/am
 
 
 ```terraform
-resource aws_apigatewayv2_api http_api {
+resource "aws_apigatewayv2_api" "http_api" {
   name          = "my-slack-api"
   protocol_type = "HTTP"
   # …
@@ -40,13 +40,13 @@ resource aws_apigatewayv2_api http_api {
 
 # WARNING Be extremely cautious when using this module
 # NEVER store secrets in plaintext and encrypt your remote state
-module slackbot_secrets {
+module "slackbot_secrets" {
   source  = "amancevice/slackbot-secrets/aws"
   version = "~> 5.0"
   # …
 }
 
-module slackbot {
+module "slackbot" {
   source  = "amancevice/slackbot/aws"
   version = "~> 19.0"
 
@@ -101,7 +101,7 @@ Some plugins are provided that can be hooked into the Slackbot out-of-the-box:
 Send messages to Slack via SNS
 
 ```terraform
-module slackbot_chat {
+module "slackbot_chat" {
   source  = "amancevice/slackbot-chat/aws"
   version = "~> 2.0"
 
@@ -137,7 +137,7 @@ module slackbot_chat {
 **Slash Command**
 
 ```terraform
-module slackbot_slash_command {
+module "slackbot_slash_command" {
   source  = "amancevice/slackbot-slash-command/aws"
   version = "~> 16.0"
 
@@ -209,11 +209,11 @@ The following examples show how a subscription might me made in Terraform:
 **Callback**
 
 ```terraform
-resource aws_sns_topic_subscription subscription {
+resource "aws_sns_topic_subscription" "subscription" {
   endpoint  = "<subscriber-arn>"
   protocol  = "<subscription-protocol>"
   topic_arn = "<sns-topic-arn>"
-  
+
   filter_policy = jsonencode({
     type = ["callback"]
     id   = ["<callback-id>", "…"]
@@ -224,11 +224,11 @@ resource aws_sns_topic_subscription subscription {
 **Event**
 
 ```terraform
-resource aws_sns_topic_subscription subscription {
+resource "aws_sns_topic_subscription" "subscription" {
   endpoint  = "<subscriber-arn>"
   protocol  = "<subscription-protocol>"
   topic_arn = "<sns-topic-arn>"
-  
+
   filter_policy = jsonencode({
     type = ["event"]
     id   = ["<event-type>"]
@@ -239,7 +239,7 @@ resource aws_sns_topic_subscription subscription {
 **OAuth**
 
 ```terraform
-resource aws_sns_topic_subscription subscription {
+resource "aws_sns_topic_subscription" "subscription" {
   endpoint  = "<subscriber-arn>"
   protocol  = "<subscription-protocol>"
   topic_arn = "<sns-topic-arn>"
@@ -253,14 +253,14 @@ resource aws_sns_topic_subscription subscription {
 **Slash Command**
 
 ```terraform
-resource aws_sns_topic_subscription subscription {
+resource "aws_sns_topic_subscription" "subscription" {
   endpoint  = "<subscriber-arn>"
   protocol  = "<subscription-protocol>"
   topic_arn = "<sns-topic-arn>"
-  
+
   filter_policy = jsonencode({
     type = ["slash"]
-    id   = ["<slash-cmd>"] 
+    id   = ["<slash-cmd>"]
   })
 }
 ```
