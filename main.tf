@@ -18,12 +18,22 @@ locals {
   base_path = var.base_path
   debug     = var.debug
 
+  kms_key = {
+    alias                   = coalesce(var.kms_key_alias, "alias/${local.secret.name}")
+    deletion_window_in_days = var.kms_key_deletion_window_in_days
+    description             = var.kms_key_description
+    enable_key_rotation     = var.kms_key_enable_key_rotation
+    is_enabled              = var.kms_key_is_enabled
+    policy_document         = var.kms_key_policy_document
+    tags                    = var.kms_key_tags
+    usage                   = var.kms_key_usage
+  }
+
   lambda = {
     description   = var.lambda_description
     function_name = var.lambda_function_name
     filename      = "${path.module}/package.zip"
     handler       = var.lambda_handler
-    kms_key_arn   = var.lambda_kms_key_arn
     memory_size   = var.lambda_memory_size
     publish       = var.lambda_publish
     runtime       = var.lambda_runtime
@@ -61,7 +71,9 @@ locals {
   }
 
   secret = {
-    name = var.secret_name
+    description = var.secret_description
+    name        = var.secret_name
+    tags        = var.secret_tags
   }
 
   topic = {
@@ -159,7 +171,7 @@ resource "aws_lambda_function" "api" {
   filename         = local.lambda.filename
   function_name    = local.lambda.function_name
   handler          = "index.handler"
-  kms_key_arn      = local.lambda.kms_key_arn
+  kms_key_arn      = aws_kms_key.key.arn
   memory_size      = local.lambda.memory_size
   publish          = local.lambda.publish
   role             = aws_iam_role.role.arn
@@ -170,7 +182,7 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      AWS_SECRET        = local.secret.name
+      AWS_SECRET        = aws_secretsmanager_secret.secret.name
       AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
       BASE_PATH         = local.base_path
       DEBUG             = local.debug
@@ -185,10 +197,6 @@ resource "aws_sns_topic" "topic" {
 }
 
 # IAM
-
-data "aws_secretsmanager_secret" "secret" {
-  name = local.secret.name
-}
 
 data "aws_iam_policy_document" "assume_role" {
   statement {
@@ -205,13 +213,13 @@ data "aws_iam_policy_document" "api" {
   statement {
     sid       = "DecryptKmsKey"
     actions   = ["kms:Decrypt"]
-    resources = [local.lambda.kms_key_arn]
+    resources = [aws_kms_key.key.arn]
   }
 
   statement {
     sid       = "GetSecretValue"
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [data.aws_secretsmanager_secret.secret.arn]
+    resources = [aws_secretsmanager_secret.secret.arn]
   }
 
   statement {
@@ -254,4 +262,28 @@ resource "aws_lambda_permission" "invoke_api" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = element(local.lambda.permissions, count.index)
   statement_id  = "AllowAPIGatewayV2-${count.index}"
+}
+
+# SECRETS
+
+resource "aws_kms_key" "key" {
+  deletion_window_in_days = local.kms_key.deletion_window_in_days
+  description             = local.kms_key.description
+  enable_key_rotation     = local.kms_key.enable_key_rotation
+  is_enabled              = local.kms_key.is_enabled
+  key_usage               = local.kms_key.usage
+  policy                  = local.kms_key.policy_document
+  tags                    = local.kms_key.tags
+}
+
+resource "aws_kms_alias" "alias" {
+  name          = local.kms_key.alias
+  target_key_id = aws_kms_key.key.key_id
+}
+
+resource "aws_secretsmanager_secret" "secret" {
+  description = local.secret.description
+  kms_key_id  = aws_kms_key.key.key_id
+  name        = local.secret.name
+  tags        = local.secret.tags
 }

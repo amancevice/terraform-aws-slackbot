@@ -26,6 +26,47 @@ variable "http_api_route_prefix" {
   default     = "/"
 }
 
+variable "kms_key_alias" {
+  description = "KMS Key alias"
+  default     = null
+}
+
+variable "kms_key_deletion_window_in_days" {
+  description = "KMS Key deletion window"
+  default     = 30
+}
+
+variable "kms_key_enable_key_rotation" {
+  description = "KMS Key rotation flag"
+  default     = false
+}
+
+variable "kms_key_is_enabled" {
+  description = "KMS Key enabled flag"
+  default     = true
+}
+
+variable "kms_key_description" {
+  description = "KMS Key description"
+  default     = "Slackbot key"
+}
+
+variable "kms_key_policy_document" {
+  description = "KMS Key policy JSON document"
+  default     = null
+}
+
+variable "kms_key_tags" {
+  description = "KMS Key resource tags"
+  type        = map(string)
+  default     = {}
+}
+
+variable "kms_key_usage" {
+  description = "KMS Key usage"
+  default     = "ENCRYPT_DECRYPT"
+}
+
 variable "lambda_description" {
   description = "Lambda function description"
   default     = "Slack request handler"
@@ -38,11 +79,6 @@ variable "lambda_function_name" {
 variable "lambda_handler" {
   description = "Lambda handler signature"
   default     = "index.handler"
-}
-
-variable "lambda_kms_key_arn" {
-  description = "Lambda function KMS key ARN"
-  default     = null
 }
 
 variable "lambda_publish" {
@@ -109,8 +145,19 @@ variable "role_tags" {
   default     = {}
 }
 
+variable "secret_description" {
+  description = "SecretsManager Secret description"
+  default     = "Slackbot secrets"
+}
+
 variable "secret_name" {
   description = "SecretsManager secret name"
+}
+
+variable "secret_tags" {
+  description = "SecretsManager Secret resource tags"
+  type        = map(string)
+  default     = {}
 }
 
 variable "topic_name" {

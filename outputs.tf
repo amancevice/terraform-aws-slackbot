@@ -1,3 +1,13 @@
+output "kms_key" {
+  description = "SecretsManager secret"
+  value       = aws_kms_key.key
+}
+
+output "kms_key_alias" {
+  description = "SecretsManager secret"
+  value       = aws_kms_alias.alias
+}
+
 output "lambda" {
   description = "API Gateway REST API proxy Lambda"
   value       = aws_lambda_function.api
@@ -10,7 +20,7 @@ output "role" {
 
 output "secret" {
   description = "SecretsManager secret"
-  value       = data.aws_secretsmanager_secret.secret
+  value       = aws_secretsmanager_secret.secret
 }
 
 output "topic" {
