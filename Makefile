@@ -3,23 +3,7 @@ NODE_VERSION := 12
 
 ENDPOINT = http://$$(REPO=$(REPO) docker-compose port lambda 8080)/2015-03-31/functions/function/invocations
 
-.PHONY: clean clobber shell up validate zip
-
-validate: package.zip | .terraform
-	terraform fmt -check
-	AWS_REGION=us-east-1 terraform validate
-
-package.zip: package.iid package-lock.json
-	docker run --rm --entrypoint cat $$(cat $<) $@ > $@
-
-package-lock.json: package.iid
-	docker run --rm --entrypoint cat $$(cat $<) $@ > $@
-
-package.iid: index.js package.json Dockerfile
-	docker build --build-arg NODE_VERSION=$(NODE_VERSION) --iidfile $@ --tag $(REPO) .
-
-.terraform:
-	terraform init
+all: validate
 
 clean:
 	REPO=$(REPO) docker-compose down
@@ -31,11 +15,29 @@ clobber: clean
 down:
 	REPO=$(REPO) docker-compose down
 
-shell: | up
-	REPO=$(REPO) docker-compose exec lambda bash
+shell:
+	docker run -it --rm --entrypoint bash $(REPO)
 
 up: package.iid
 	REPO=$(REPO) docker-compose up --detach lambda
 	@echo $(ENDPOINT)
 
+validate: package.zip .terraform.lock.hcl
+	terraform fmt -check
+	AWS_REGION=us-east-1 terraform validate
+
 zip: package.zip
+
+.PHONY: all clean clobber down shell up validate zip
+
+package.zip: package.iid package-lock.json
+	docker run --rm --entrypoint cat $(REPO) $@ > $@
+
+package-lock.json: package.json | package.iid
+	docker run --rm --entrypoint cat $(REPO) $@ > $@
+
+package.iid: Dockerfile index.js package.json
+	docker build --build-arg NODE_VERSION=$(NODE_VERSION) --iidfile $@ --tag $(REPO) .
+
+.terraform.lock.hcl:
+	terraform init

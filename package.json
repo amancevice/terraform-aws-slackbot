@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "serverless-http": "^2.6.0",
+    "serverless-http": "^2.6.1",
     "slackend": "^4.6.0"
   },
   "devDependencies": {
