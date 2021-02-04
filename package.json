@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "serverless-http": "^2.6.1",
-    "slackend": "^4.6.0"
+    "slackend": "^4.7.0"
   },
   "devDependencies": {
     "aws-sdk": "^2.720.0",
