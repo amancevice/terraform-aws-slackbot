@@ -186,6 +186,12 @@ resource "aws_lambda_function" "api" {
       AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
       BASE_PATH         = local.base_path
       DEBUG             = local.debug
+      DEBUG_HIDE_DATE   = "1"
+      DEBUG_COLORS      = "0"
+      SLACKEND_DEBUG    = "SLACK:DEBUG"
+      SLACKEND_INFO     = "SLACK:INFO"
+      SLACKEND_WARN     = "SLACK:WARN"
+      SLACKEND_ERROR    = "SLACK:ERROR"
     }
   }
 }

@@ -5,7 +5,7 @@ variable "base_path" {
 
 variable "debug" {
   description = "Node debug logger config"
-  default     = "slackend:*"
+  default     = "SLACK:*"
 }
 
 variable "http_api_execution_arn" {
