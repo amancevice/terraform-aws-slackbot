@@ -1,5 +1,4 @@
-REPO         := amancevice/$(shell basename $$PWD)
-NODE_VERSION := 12
+REPO := amancevice/$(shell basename $$PWD)
 
 ENDPOINT = http://$$(REPO=$(REPO) docker-compose port lambda 8080)/2015-03-31/functions/function/invocations
 
@@ -37,7 +36,7 @@ package-lock.json: package.json | package.iid
 	docker run --rm --entrypoint cat $(REPO) $@ > $@
 
 package.iid: Dockerfile index.js package.json
-	docker build --build-arg NODE_VERSION=$(NODE_VERSION) --iidfile $@ --tag $(REPO) .
+	docker build --iidfile $@ --tag $(REPO) .
 
 .terraform.lock.hcl:
 	terraform init

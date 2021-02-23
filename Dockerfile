@@ -1,4 +1,4 @@
-ARG NODE_VERSION=12
+ARG NODE_VERSION=14
 FROM amazon/aws-lambda-nodejs:${NODE_VERSION}
 RUN yum install -y zip
 COPY . .

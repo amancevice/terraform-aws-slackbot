@@ -100,7 +100,7 @@ variable "lambda_permissions" {
 
 variable "lambda_runtime" {
   description = "Lambda function runtime"
-  default     = "nodejs12.x"
+  default     = "nodejs14.x"
 }
 
 variable "lambda_tags" {
