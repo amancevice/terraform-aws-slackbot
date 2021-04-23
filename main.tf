@@ -166,9 +166,15 @@ resource "aws_cloudwatch_log_group" "logs" {
 
 # LAMBDA FUNCTIONS
 
+data "archive_file" "package" {
+  source_dir  = "${path.module}/src"
+  output_path = "package.zip"
+  type        = "zip"
+}
+
 resource "aws_lambda_function" "api" {
   description      = local.lambda.description
-  filename         = local.lambda.filename
+  filename         = data.archive_file.package.output_path
   function_name    = local.lambda.function_name
   handler          = "index.handler"
   kms_key_arn      = aws_kms_key.key.arn
@@ -176,7 +182,7 @@ resource "aws_lambda_function" "api" {
   publish          = local.lambda.publish
   role             = aws_iam_role.role.arn
   runtime          = local.lambda.runtime
-  source_code_hash = filebase64sha256(local.lambda.filename)
+  source_code_hash = data.archive_file.package.output_base64sha256
   tags             = local.lambda.tags
   timeout          = local.lambda.timeout
 

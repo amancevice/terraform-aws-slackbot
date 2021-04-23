@@ -12,4 +12,5 @@
 *.env
 *.zip
 .terraform.lock.hcl
-!package.zip
+.coverage
+coverage.xml

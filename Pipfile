@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+boto3 = "*"
+
+[dev-packages]
+ipdb = "*"
+ipython = "*"
+lambda-gateway = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-flake8 = "*"
+
+[requires]
+python_version = "3.8"
