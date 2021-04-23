@@ -24,12 +24,11 @@ The archetecture for the Slackbot API is fairly straightforward. All requests ar
 
 OAuth requests are authenticated using the Slack client and redirected to the configured redirect URL.
 
-<img alt="arch" src="https://github.com/amancevice/slackend/raw/main/docs/aws.png"/>
+![arch](https://github.com/amancevice/slackend/raw/4.9.0/docs/aws.png)
 
 ## Usage
 
 Deploy directly to AWS using this and [`slackbot-secrets`](https://github.com/amancevice/terraform-aws-slackbot-secrets) modules:
-
 
 ```terraform
 resource "aws_apigatewayv2_api" "http_api" {
@@ -204,7 +203,7 @@ The `type` field's value is taken from the path of the original request and will
 The following table illustrates how the `type` and `id` field's respective values are calculated:
 
 | Endpoint      | Type       | ID Recipe       |
-|:------------- |:---------- |:--------------- |
+| :------------ | :--------- | :-------------- |
 | `/callbacks`  | `callback` | `$.callback_id` |
 | `/events`     | `event`    | `$.event.type`  |
 | `/oauth`      | `oauth`    | `$.code`        |
