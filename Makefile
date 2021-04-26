@@ -5,38 +5,19 @@ ENDPOINT = http://$$(REPO=$(REPO) docker-compose port lambda 8080)/2015-03-31/fu
 all: validate
 
 clean:
-	REPO=$(REPO) docker-compose down
-	rm -rf package.iid
+	rm -rf .terraform
 
 clobber: clean
-	REPO=$(REPO) docker-compose down --rmi all --volumes
+	rm -rf .terraform.lock.hcl
 
-down:
-	REPO=$(REPO) docker-compose down
+up:
+	pipenv run lambda-gateway -p 3000 src.index.proxy
 
-shell:
-	docker run -it --rm --entrypoint bash $(REPO)
-
-up: package.iid
-	REPO=$(REPO) docker-compose up --detach lambda
-	@echo $(ENDPOINT)
-
-validate: package.zip .terraform.lock.hcl
+validate: | .terraform
 	terraform fmt -check
 	AWS_REGION=us-east-1 terraform validate
 
-zip: package.zip
+.PHONY: all clean clobber up validate
 
-.PHONY: all clean clobber down shell up validate zip
-
-package.zip: package.iid package-lock.json
-	docker run --rm --entrypoint cat $(REPO) $@ > $@
-
-package-lock.json: package.json | package.iid
-	docker run --rm --entrypoint cat $(REPO) $@ > $@
-
-package.iid: Dockerfile index.js package.json
-	docker build --iidfile $@ --tag $(REPO) .
-
-.terraform.lock.hcl:
+.terraform:
 	terraform init

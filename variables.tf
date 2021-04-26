@@ -3,9 +3,24 @@ variable "base_path" {
   default     = "/"
 }
 
-variable "debug" {
-  description = "Node debug logger config"
-  default     = "SLACK:*"
+variable "event_bus_arn" {
+  description = "EventBridge bus ARN"
+  default     = null
+}
+
+variable "event_post_rule_description" {
+  description = "Post Lambda EventBridge rule name"
+  default     = "Capture events destined for post Lambda"
+}
+
+variable "event_post_rule_name" {
+  description = "Post Lambda EventBridge rule name"
+  default     = "slack-post"
+}
+
+variable "event_source" {
+  description = "EventBridge source"
+  default     = "slack"
 }
 
 variable "http_api_execution_arn" {
@@ -19,11 +34,6 @@ variable "http_api_id" {
 variable "http_api_integration_description" {
   description = "API Gateway v2 HTTP API integration description"
   default     = "Slack request Lambda integration"
-}
-
-variable "http_api_route_prefix" {
-  description = "API Gateway v2 HTTP API route prefix"
-  default     = "/"
 }
 
 variable "kms_key_alias" {
@@ -67,49 +77,68 @@ variable "kms_key_usage" {
   default     = "ENCRYPT_DECRYPT"
 }
 
-variable "lambda_description" {
-  description = "Lambda function description"
-  default     = "Slack request handler"
-}
-
-variable "lambda_function_name" {
-  description = "Lambda function name"
-}
-
-variable "lambda_handler" {
-  description = "Lambda handler signature"
-  default     = "index.handler"
-}
-
-variable "lambda_publish" {
-  description = "Lambda publish flag"
-  default     = false
-  type        = bool
-}
-
-variable "lambda_memory_size" {
-  description = "Lambda function memory size"
-  default     = 1024
-}
-
-variable "lambda_permissions" {
-  description = "Lambda permissions for API Gateway v2 HTTP API"
-  type        = list(string)
-  default     = []
-}
-
-variable "lambda_runtime" {
-  description = "Lambda function runtime"
-  default     = "nodejs14.x"
-}
-
 variable "lambda_tags" {
   description = "Lambda function resource tags"
   type        = map(string)
   default     = {}
 }
 
-variable "lambda_timeout" {
+variable "lambda_post_description" {
+  description = "Lambda function description"
+  default     = "Slack API handler"
+}
+
+variable "lambda_post_function_name" {
+  description = "Lambda function name prefix"
+}
+
+variable "lambda_post_publish" {
+  description = "Lambda publish flag"
+  default     = false
+  type        = bool
+}
+
+variable "lambda_post_memory_size" {
+  description = "Lambda function memory size"
+  default     = 1024
+}
+
+variable "lambda_post_runtime" {
+  description = "Lambda function runtime"
+  default     = "python3.8"
+}
+
+variable "lambda_post_timeout" {
+  description = "Lambda function timeout in seconds"
+  default     = 3
+}
+
+variable "lambda_proxy_description" {
+  description = "Lambda function description"
+  default     = "Slack request handler"
+}
+
+variable "lambda_proxy_function_name" {
+  description = "Lambda function name prefix"
+}
+
+variable "lambda_proxy_publish" {
+  description = "Lambda publish flag"
+  default     = false
+  type        = bool
+}
+
+variable "lambda_proxy_memory_size" {
+  description = "Lambda function memory size"
+  default     = 1024
+}
+
+variable "lambda_proxy_runtime" {
+  description = "Lambda function runtime"
+  default     = "python3.8"
+}
+
+variable "lambda_proxy_timeout" {
   description = "Lambda function timeout in seconds"
   default     = 3
 }
@@ -158,8 +187,4 @@ variable "secret_tags" {
   description = "SecretsManager Secret resource tags"
   type        = map(string)
   default     = {}
-}
-
-variable "topic_name" {
-  description = "SNS topic name"
 }

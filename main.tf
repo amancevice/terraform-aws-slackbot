@@ -16,7 +16,31 @@ terraform {
 
 locals {
   base_path = var.base_path
-  debug     = var.debug
+
+  aws = {
+    account_id = data.aws_caller_identity.current.account_id
+    partition  = data.aws_partition.current.partition
+    region     = data.aws_region.current.name
+  }
+
+  events = {
+    source = var.event_source
+
+    bus = {
+      arn = var.event_bus_arn == null ? "arn:${local.aws.partition}:events:${local.aws.region}:${local.aws.account_id}:event-bus/default" : var.event_bus_arn
+    }
+
+    post = {
+      rule_name        = var.event_post_rule_name
+      rule_description = var.event_post_rule_description
+    }
+  }
+
+  http_api = {
+    execution_arn           = var.http_api_execution_arn
+    id                      = var.http_api_id
+    integration_description = var.http_api_integration_description
+  }
 
   kms_key = {
     alias                   = coalesce(var.kms_key_alias, "alias/${local.secret.name}")
@@ -30,37 +54,45 @@ locals {
   }
 
   lambda = {
-    description   = var.lambda_description
-    function_name = var.lambda_function_name
-    filename      = "${path.module}/package.zip"
-    handler       = var.lambda_handler
-    memory_size   = var.lambda_memory_size
-    publish       = var.lambda_publish
-    runtime       = var.lambda_runtime
-    tags          = var.lambda_tags
-    timeout       = var.lambda_timeout
+    post = {
+      description   = var.lambda_post_description
+      function_name = var.lambda_post_function_name
+      memory_size   = var.lambda_post_memory_size
+      publish       = var.lambda_post_publish
+      runtime       = var.lambda_post_runtime
+      timeout       = var.lambda_post_timeout
+    }
 
-    permissions = coalescelist(var.lambda_permissions, [
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}health",
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}install",
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}oauth",
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}oauth/v2",
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}callbacks",
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}events",
-      "${local.http_api.execution_arn}/*/*${local.http_api.route_prefix}slash/*",
-    ])
+    proxy = {
+      description   = var.lambda_proxy_description
+      function_name = var.lambda_proxy_function_name
+      memory_size   = var.lambda_proxy_memory_size
+      publish       = var.lambda_proxy_publish
+      runtime       = var.lambda_proxy_runtime
+      timeout       = var.lambda_proxy_timeout
+    }
+
+    environment_variables = {
+      SECRET_ID       = aws_secretsmanager_secret.secret.name
+      EVENTS_BUS_NAME = aws_cloudwatch_event_rule.post.event_bus_name
+    }
+
+    permissions = [
+      "${local.http_api.execution_arn}/*/*/health",
+      "${local.http_api.execution_arn}/*/*/install",
+      "${local.http_api.execution_arn}/*/*/oauth",
+      "${local.http_api.execution_arn}/*/*/oauth/v2",
+      "${local.http_api.execution_arn}/*/*/callbacks",
+      "${local.http_api.execution_arn}/*/*/events",
+      "${local.http_api.execution_arn}/*/*/slash/*",
+    ]
+
+    tags = var.lambda_tags
   }
 
   log_group = {
     retention_in_days = var.log_group_retention_in_days
     tags              = var.log_group_tags
-  }
-
-  http_api = {
-    execution_arn           = var.http_api_execution_arn
-    id                      = var.http_api_id
-    integration_description = var.http_api_integration_description
-    route_prefix            = var.http_api_route_prefix
   }
 
   role = {
@@ -75,131 +107,108 @@ locals {
     name        = var.secret_name
     tags        = var.secret_tags
   }
+}
 
-  topic = {
-    name = var.topic_name
-  }
+# AWS
+
+data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
+data "aws_region" "current" {}
+
+# EVENTS
+
+resource "aws_cloudwatch_event_rule" "post" {
+  event_bus_name = split("/", local.events.bus.arn)[1]
+  name           = local.events.post.rule_name
+  description    = local.events.post.rule_description
+
+  event_pattern = jsonencode({
+    detail-type = [{ prefix = "api/" }]
+    source      = [local.events.source]
+  })
+}
+
+resource "aws_cloudwatch_event_target" "post" {
+  arn            = aws_lambda_function.post.arn
+  event_bus_name = aws_cloudwatch_event_rule.post.event_bus_name
+  rule           = aws_cloudwatch_event_rule.post.name
+  target_id      = "slack-post"
 }
 
 # HTTP API
 
 resource "aws_apigatewayv2_integration" "proxy" {
-  api_id               = local.http_api.id
-  connection_type      = "INTERNET"
-  description          = local.http_api.integration_description
-  integration_method   = "POST"
-  integration_type     = "AWS_PROXY"
-  integration_uri      = aws_lambda_function.api.invoke_arn
-  timeout_milliseconds = 3000
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.proxy.invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
 }
 
 resource "aws_apigatewayv2_route" "post_callbacks" {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.http_api.route_prefix}callbacks"
+  route_key          = "POST /callbacks"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "post_events" {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.http_api.route_prefix}events"
+  route_key          = "POST /events"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_health" {
   api_id             = local.http_api.id
-  route_key          = "GET ${local.http_api.route_prefix}health"
+  route_key          = "GET /health"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_install" {
   api_id             = local.http_api.id
-  route_key          = "GET ${local.http_api.route_prefix}install"
+  route_key          = "GET /install"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "head_install" {
   api_id             = local.http_api.id
-  route_key          = "HEAD ${local.http_api.route_prefix}install"
+  route_key          = "HEAD /install"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "head_health" {
   api_id             = local.http_api.id
-  route_key          = "HEAD ${local.http_api.route_prefix}health"
+  route_key          = "HEAD /health"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_oauth" {
   api_id             = local.http_api.id
-  route_key          = "GET ${local.http_api.route_prefix}oauth"
+  route_key          = "GET /oauth"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_oauth_v2" {
   api_id             = local.http_api.id
-  route_key          = "GET ${local.http_api.route_prefix}oauth/v2"
+  route_key          = "GET /oauth/v2"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
 resource "aws_apigatewayv2_route" "post_slash_cmd" {
   api_id             = local.http_api.id
-  route_key          = "POST ${local.http_api.route_prefix}slash/{proxy+}"
+  route_key          = "POST /slash/{cmd}"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
-}
-
-# LOG GROUPS
-
-resource "aws_cloudwatch_log_group" "logs" {
-  name              = "/aws/lambda/${aws_lambda_function.api.function_name}"
-  retention_in_days = local.log_group.retention_in_days
-  tags              = local.log_group.tags
-}
-
-# LAMBDA FUNCTIONS
-
-resource "aws_lambda_function" "api" {
-  description      = local.lambda.description
-  filename         = local.lambda.filename
-  function_name    = local.lambda.function_name
-  handler          = "index.handler"
-  kms_key_arn      = aws_kms_key.key.arn
-  memory_size      = local.lambda.memory_size
-  publish          = local.lambda.publish
-  role             = aws_iam_role.role.arn
-  runtime          = local.lambda.runtime
-  source_code_hash = filebase64sha256(local.lambda.filename)
-  tags             = local.lambda.tags
-  timeout          = local.lambda.timeout
-
-  environment {
-    variables = {
-      AWS_SECRET        = aws_secretsmanager_secret.secret.name
-      AWS_SNS_TOPIC_ARN = aws_sns_topic.topic.arn
-      BASE_PATH         = local.base_path
-      DEBUG             = local.debug
-      DEBUG_HIDE_DATE   = "1"
-      DEBUG_COLORS      = "0"
-      SLACKEND_DEBUG    = "SLACK:DEBUG"
-      SLACKEND_INFO     = "SLACK:INFO"
-      SLACKEND_WARN     = "SLACK:WARN"
-      SLACKEND_ERROR    = "SLACK:ERROR"
-    }
-  }
-}
-
-# SNS TOPIC
-
-resource "aws_sns_topic" "topic" {
-  name = local.topic.name
 }
 
 # IAM
@@ -215,7 +224,7 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
-data "aws_iam_policy_document" "api" {
+data "aws_iam_policy_document" "inline" {
   statement {
     sid       = "DecryptKmsKey"
     actions   = ["kms:Decrypt"]
@@ -230,8 +239,8 @@ data "aws_iam_policy_document" "api" {
 
   statement {
     sid       = "PublishEvents"
-    actions   = ["sns:Publish"]
-    resources = [aws_sns_topic.topic.arn]
+    actions   = ["events:PutEvents"]
+    resources = [local.events.bus.arn]
   }
 
   statement {
@@ -258,16 +267,84 @@ resource "aws_iam_role" "role" {
 resource "aws_iam_role_policy" "api" {
   name   = "api"
   role   = aws_iam_role.role.id
-  policy = data.aws_iam_policy_document.api.json
+  policy = data.aws_iam_policy_document.inline.json
 }
 
 resource "aws_lambda_permission" "invoke_api" {
   count         = length(local.lambda.permissions)
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api.arn
+  function_name = aws_lambda_function.proxy.arn
   principal     = "apigateway.amazonaws.com"
   source_arn    = element(local.lambda.permissions, count.index)
   statement_id  = "AllowAPIGatewayV2-${count.index}"
+}
+
+resource "aws_lambda_permission" "invoke_post" {
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.post.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.post.arn
+  statement_id  = "AllowExecutionFromEventBridge"
+}
+
+# LAMBDA FUNCTIONS
+
+data "archive_file" "package" {
+  source_dir  = "${path.module}/src"
+  output_path = "${path.module}/package.zip"
+  type        = "zip"
+}
+
+resource "aws_lambda_function" "post" {
+  description      = local.lambda.post.description
+  filename         = data.archive_file.package.output_path
+  function_name    = local.lambda.post.function_name
+  handler          = "index.post"
+  kms_key_arn      = aws_kms_key.key.arn
+  memory_size      = local.lambda.post.memory_size
+  publish          = local.lambda.post.publish
+  role             = aws_iam_role.role.arn
+  runtime          = local.lambda.post.runtime
+  source_code_hash = data.archive_file.package.output_base64sha256
+  tags             = local.lambda.tags
+  timeout          = local.lambda.post.timeout
+
+  environment {
+    variables = local.lambda.environment_variables
+  }
+}
+
+resource "aws_lambda_function" "proxy" {
+  description      = local.lambda.proxy.description
+  filename         = data.archive_file.package.output_path
+  function_name    = local.lambda.proxy.function_name
+  handler          = "index.proxy"
+  kms_key_arn      = aws_kms_key.key.arn
+  memory_size      = local.lambda.proxy.memory_size
+  publish          = local.lambda.proxy.publish
+  role             = aws_iam_role.role.arn
+  runtime          = local.lambda.proxy.runtime
+  source_code_hash = data.archive_file.package.output_base64sha256
+  tags             = local.lambda.tags
+  timeout          = local.lambda.proxy.timeout
+
+  environment {
+    variables = local.lambda.environment_variables
+  }
+}
+
+# LOG GROUPS
+
+resource "aws_cloudwatch_log_group" "post_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.post.function_name}"
+  retention_in_days = local.log_group.retention_in_days
+  tags              = local.log_group.tags
+}
+
+resource "aws_cloudwatch_log_group" "proxy_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.proxy.function_name}"
+  retention_in_days = local.log_group.retention_in_days
+  tags              = local.log_group.tags
 }
 
 # SECRETS

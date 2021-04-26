@@ -3,12 +3,12 @@ on:
   pull_request:
   push:
   schedule:
-    - cron: '11 21 * * *'
+    - cron: "11 21 * * *"
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - uses: hashicorp/setup-terraform@v1
       - run: terraform fmt -check
       - run: terraform init

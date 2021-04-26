@@ -8,9 +8,14 @@ output "kms_key_alias" {
   value       = aws_kms_alias.alias
 }
 
-output "lambda" {
+output "lambda_post" {
+  description = "Slack API helper Lambda"
+  value       = aws_lambda_function.post
+}
+
+output "lambda_proxy" {
   description = "API Gateway REST API proxy Lambda"
-  value       = aws_lambda_function.api
+  value       = aws_lambda_function.proxy
 }
 
 output "role" {
@@ -21,9 +26,4 @@ output "role" {
 output "secret" {
   description = "SecretsManager secret"
   value       = aws_secretsmanager_secret.secret
-}
-
-output "topic" {
-  description = "Slackbot SNS topic"
-  value       = aws_sns_topic.topic
 }
