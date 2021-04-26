@@ -223,7 +223,7 @@ module "slackbot_slash_command" {
   slack_slash_command  = "example"
 
   slack_response = jsonencode({
-    response_type = "ephemeral | in_channel | modal"
+    response_type = "ephemeral | in_channel"
     text          = ":sparkles: This will be the response"
     blocks        = [ /* … */ ]
   })
@@ -235,6 +235,7 @@ module "slackbot_slash_command" {
   lambda_memory_size          = 128
   lambda_timeout              = 3
   log_group_retention_in_days = 30
+  slack_response_type         = "direct | modal"
 
   log_group_tags = { /* … */ }
   lambda_tags    = { /* … */ }
