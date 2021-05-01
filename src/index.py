@@ -126,14 +126,17 @@ def post_slash_cmd(event):
     return slack.respond(204)
 
 
-@logger.attach
+@logger.bind
 def post(event, context=None):
     event = EventBridgeEvent(event)
-    result = slack.post(event.detail, event.detail_type)
+    result = slack.post(
+        event.detail, event.detail_type,
+        authorization=f'Bearer { slack.token }',
+    )
     return events.publish(f'result/{ event.detail_type }', result)
 
 
-@logger.attach
+@logger.bind
 def proxy(event, context=None):
     try:
         return slack.handle(HttpEvent(event))

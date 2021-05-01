@@ -61,13 +61,15 @@ class Slack:
             redirect_uri=self.oauth_redirect_uri,
         )
 
+        # Execute OAuth and redirect
         result = self.post(payload, method)
-
-        channel_id = result.get('incoming_webhook', {}).get('channel_id')
+        app_id = result.get('app_id')
         team_id = result.get('team', {}).get('id')
+        channel_id = result.get('incoming_webhook', {}).get('channel_id')
         location = self.oauth_success_uri.format(
-            team_id=team_id,
-            channel_id=channel_id,
+            APP_ID=app_id,
+            TEAM_ID=team_id,
+            CHANNEL_ID=channel_id,
         )
 
         return result, location
@@ -77,12 +79,16 @@ class Slack:
         *url, query, fragment = urlsplit(self.oauth_install_uri)
         if query:
             query += '&'
-        query += f'state={ self.state }'
+        query += urlencode({
+            'state': self.state,
+            'redirect_uri': self.oauth_redirect_uri,
+        })
         return urlunsplit(url + [query, fragment])
 
-    def post(self, body, method):
+    def post(self, body, method, **headers):
         # Execute request
-        req = Request(**self.post_request(body, method))
+        logger.info('POST https://slack.com/%s %s', method, json.dumps(body))
+        req = Request(**self.post_request(body, method, **headers))
         res = urlopen(req)
 
         # Parse response
@@ -93,17 +99,15 @@ class Slack:
             ok = resdata['ok']
 
         # Log response & return
-        log = f'RESPONSE [{ res.status }]'
-        logger.info(log) if ok else logger.error(log)
+        if ok:
+            logger.info('RESPONSE [%d] %s', res.status, json.dumps(resdata))
+        else:
+            logger.error('RESPONSE [%d] %s', res.status, json.dumps(resdata))
         return resdata
 
-    def post_request(self, body, method):
+    def post_request(self, body, method, **headers):
         # Set up request
         url = f'https://slack.com/{ method }'
-        headers = {
-            'authorization': f'Bearer { self.token }',
-            'content-type': 'application/json; charset=utf-8',
-        }
 
         # Force some methods to use application/x-www-form-urlencoded
         form_methods = [
@@ -116,6 +120,7 @@ class Slack:
             headers['content-type'] = 'application/x-www-form-urlencoded'
         else:
             data = json.dumps(body).encode('utf-8')
+            headers['content-type'] = 'application/json; charset=utf-8'
 
         # Build request
         return dict(url=url, data=data, headers=headers, method='POST')
@@ -128,8 +133,10 @@ class Slack:
     @staticmethod
     def respond(status_code, body=None, **headers):
         body = json.dumps(body) if body else None
-        log = f"RESPONSE [{ status_code }] { str(body or 'null') }"
-        logger.info(log) if int(status_code) < 400 else logger.error(log)
+        if int(status_code) < 400:
+            logger.info('RESPONSE [%d] %s', status_code, str(body or 'null'))
+        else:
+            logger.error('RESPONSE [%d] %s', status_code, str(body or 'null'))
         headers = {
             'content-length': str(len(body or '')),
             'content-type': 'application/json; charset=utf-8',

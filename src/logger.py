@@ -50,7 +50,7 @@ class LambdaLoggerAdapter(logging.LoggerAdapter):
     def __init__(self, logger, extra=None):
         super().__init__(logger, extra or dict(awsRequestId='-'))
 
-    def attach(self, handler):
+    def bind(self, handler):
         """
         Decorate Lambda handler to attach logger to AWS request.
 
