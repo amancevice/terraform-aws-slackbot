@@ -25,11 +25,11 @@ class TestLogger:
             '-'
         ),
     ])
-    def test_attach(self, event, context, name, awsRequestId):
+    def test_bind(self, event, context, name, awsRequestId):
         logger = getLogger(name, stream=self.stream)
         logger.setLevel('DEBUG')
 
-        @logger.attach
+        @logger.bind
         def handler(event=None, context=None):
             logger.warning('TEST')
             return {'ok': True}

@@ -11,6 +11,7 @@ class TestIndex:
         index.slack.oauth_install_uri = 'https://example.com/install'
         index.slack.oauth_redirect_uri = 'https://example.com/success'
         index.slack.state = 'state'
+        index.slack.token = 'token'
         index.slack.verify = False
 
         index.events.publish = mock.MagicMock()
@@ -40,7 +41,10 @@ class TestIndex:
             'headers': {
                 'content-type': 'application/json; charset=utf-8',
                 'content-length': '0',
-                'location': 'https://example.com/install?state=state',
+                'location': (
+                    'https://example.com/install?state=state&'
+                    'redirect_uri=https%3A%2F%2Fexample.com%2Fsuccess'
+                ),
             }
         }
         assert ret == exp
@@ -109,7 +113,10 @@ class TestIndex:
             'headers': {
                 'content-type': 'application/json; charset=utf-8',
                 'content-length': '0',
-                'location': 'https://example.com/install?state=state',
+                'location': (
+                    'https://example.com/install?state=state&'
+                    'redirect_uri=https%3A%2F%2Fexample.com%2Fsuccess'
+                ),
             }
         }
         assert ret == exp
@@ -244,4 +251,5 @@ class TestIndex:
         index.slack.post.assert_called_once_with(
             {'text': 'FIZZ'},
             'api/chat.postMessage',
+            authorization='Bearer token'
         )

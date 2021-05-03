@@ -35,10 +35,10 @@ class TestSlack:
     @mock.patch('src.slack.Slack.post')
     def test_install(self, mock_post):
         res = {
-            'incoming_webhook': {'channel_id': 'C0123456789'},
+            'app_id': 'A0123456789',
             'team': {'id': 'T0123456789'},
         }
-        loc = 'slack://channel?team=T0123456789&id=C0123456789'
+        loc = 'slack://app?team=T0123456789&id=A0123456789'
         mock_post.return_value = res
         event = {
             'queryStringParameters': {
@@ -72,15 +72,7 @@ class TestSlack:
         if redir:
             self.subject.oauth_error_uri = redir
             ret = self.subject.install(HttpEvent(event), '<oauth-method>')
-            exp = {
-                'statusCode': 302,
-                'body': None,
-                'headers': {
-                    'content-length': '0',
-                    'content-type': 'application/json; charset=utf-8',
-                    'location': redir
-                }
-            }
+            exp = (None, redir)
             assert ret == exp
         else:
             with pytest.raises(Exception):
@@ -90,12 +82,12 @@ class TestSlack:
         (
             'state-1',
             'https://example.com/install',
-            'https://example.com/install?state=state-1',
+            'https://example.com/install?state=state-1&redirect_uri='
         ),
         (
             'state-2',
             'https://example.com/install?fizz=buzz',
-            'https://example.com/install?fizz=buzz&state=state-2',
+            'https://example.com/install?fizz=buzz&state=state-2&redirect_uri='
         ),
     ])
     def test_install_url(self, state, oauth_install_uri, exp):
@@ -117,7 +109,6 @@ class TestSlack:
                 'url': 'https://slack.com/api/chat.postMessage',
                 'data': b'{"test": "FIZZ"}',
                 'headers': {
-                    'authorization': 'Bearer <token>',
                     'content-type': 'application/json; charset=utf-8',
                 },
             },
@@ -130,7 +121,6 @@ class TestSlack:
                 'url': 'https://slack.com/api/files.upload',
                 'data': b'test=FIZZ',
                 'headers': {
-                    'authorization': 'Bearer <token>',
                     'content-type': 'application/x-www-form-urlencoded',
                 },
             },

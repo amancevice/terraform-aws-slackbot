@@ -19,7 +19,7 @@ class Slack:
         self.oauth_install_uri = params.get('oauth_install_uri')
         self.oauth_redirect_uri = params.get('oauth_redirect_uri')
         self.oauth_success_uri = params.get('oauth_success_uri') \
-            or 'slack://channel?team={team_id}&id={channel_id}'
+            or 'slack://app?team={TEAM_ID}&id={APP_ID}'
         self.routes = params.get('routes') or {}
         self.signing_secret = params.get('signing_secret')
         self.signing_version = params.get('signing_version') or 'v0'
@@ -67,9 +67,9 @@ class Slack:
         team_id = result.get('team', {}).get('id')
         channel_id = result.get('incoming_webhook', {}).get('channel_id')
         location = self.oauth_success_uri.format(
-            APP_ID=app_id,
-            TEAM_ID=team_id,
-            CHANNEL_ID=channel_id,
+            APP_ID=app_id or '',
+            TEAM_ID=team_id or '',
+            CHANNEL_ID=channel_id or '',
         )
 
         return result, location
@@ -80,8 +80,8 @@ class Slack:
         if query:
             query += '&'
         query += urlencode({
-            'state': self.state,
-            'redirect_uri': self.oauth_redirect_uri,
+            'state': self.state or '',
+            'redirect_uri': self.oauth_redirect_uri or '',
         })
         return urlunsplit(url + [query, fragment])
 
@@ -99,10 +99,8 @@ class Slack:
             ok = resdata['ok']
 
         # Log response & return
-        if ok:
-            logger.info('RESPONSE [%d] %s', res.status, json.dumps(resdata))
-        else:
-            logger.error('RESPONSE [%d] %s', res.status, json.dumps(resdata))
+        log = logger.info if ok else logger.error
+        log('RESPONSE [%d] %s', res.status, json.dumps(resdata))
         return resdata
 
     def post_request(self, body, method, **headers):
