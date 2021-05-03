@@ -43,14 +43,14 @@ class Slack:
         if event.query.get('error'):
             logger.error(event.query['error'])
             if self.oauth_error_uri:
-                return self.respond(302, None, location=self.oauth_error_uri)
+                return None, self.oauth_error_uri
             raise Forbidden('OAuth error')
 
         # Check state
         if self.state != event.query['state']:
             logger.error('States do not match')
             if self.oauth_error_uri:
-                return self.respond(302, None, location=self.oauth_error_uri)
+                return None, self.oauth_error_uri
             raise Forbidden('States do not match')
 
         # Set up OAuth
