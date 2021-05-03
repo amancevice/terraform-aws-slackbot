@@ -94,16 +94,16 @@ def post_callbacks(event):
 
 @slack.route('POST /events')
 def post_events(event):
-    # Verify Slack signature
-    slack.verify_slack_signature(event)
-
     # Extract message
     detail = json.loads(event.body)
 
     # First-time URL verification for events
     if detail.get('type') == 'url_verification':
         # Respond 200 OK for URL verification
-        return slack.respond(200, {'challenge': detail['challenge']})
+        return slack.respond(200, {'challenge': detail.get('challenge')})
+
+    # Verify Slack signature
+    slack.verify_slack_signature(event)
 
     # Publish event
     events.publish('event', detail, event.headers.get('x-amzn-trace-id'))
