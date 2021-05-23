@@ -96,39 +96,12 @@ class TestSlack:
         assert self.subject.install_url == exp
 
     def test_post(self):
-        ret = self.subject.post({'text': 'FIZZ'}, 'api/chat.postMessage')
-        exp = {'ok': True}
-        assert ret == exp
-
-    @pytest.mark.parametrize(('body', 'method', 'exp'), [
-        (
-            {'test': 'FIZZ'},
+        ret = self.subject.post(
             'api/chat.postMessage',
-            {
-                'method': 'POST',
-                'url': 'https://slack.com/api/chat.postMessage',
-                'data': b'{"test": "FIZZ"}',
-                'headers': {
-                    'content-type': 'application/json; charset=utf-8',
-                },
-            },
-        ),
-        (
-            {'test': 'FIZZ'},
-            'api/files.upload',
-            {
-                'method': 'POST',
-                'url': 'https://slack.com/api/files.upload',
-                'data': b'test=FIZZ',
-                'headers': {
-                    'content-type': 'application/x-www-form-urlencoded',
-                },
-            },
-        ),
-    ])
-    def test_post_request(self, body, method, exp):
-        self.subject.token = '<token>'
-        ret = self.subject.post_request(body, method)
+            json.dumps({'text': 'FIZZ'}),
+            {'content-type': 'application/json; charset=utf-8'},
+        )
+        exp = {'ok': True}
         assert ret == exp
 
     def test_randstate(self):

@@ -85,10 +85,15 @@ class Slack:
         })
         return urlunsplit(url + [query, fragment])
 
-    def post(self, body, method, **headers):
+    def post(self, path, body=None, headers=None):
+        # Prepare request
+        data = body.encode('utf-8')
+        headers = {k.lower(): v for k, v in (headers or {}).items()}
+
         # Execute request
-        logger.info('POST https://slack.com/%s %s', method, json.dumps(body))
-        req = Request(**self.post_request(body, method, **headers))
+        url = f'https://slack.com/{ path }'
+        logger.info('POST %s %s', url, body)
+        req = Request(url=url, data=data, headers=headers, method='POST')
         res = urlopen(req)
 
         # Parse response
@@ -102,26 +107,6 @@ class Slack:
         log = logger.info if ok else logger.error
         log('RESPONSE [%d] %s', res.status, json.dumps(resdata))
         return resdata
-
-    def post_request(self, body, method, **headers):
-        # Set up request
-        url = f'https://slack.com/{ method }'
-
-        # Force some methods to use application/x-www-form-urlencoded
-        form_methods = [
-            'api/oauth.access',
-            'api/oauth.v2.access',
-            'api/files.upload'
-        ]
-        if method in form_methods:
-            data = urlencode(body).encode('utf-8')
-            headers['content-type'] = 'application/x-www-form-urlencoded'
-        else:
-            data = json.dumps(body).encode('utf-8')
-            headers['content-type'] = 'application/json; charset=utf-8'
-
-        # Build request
-        return dict(url=url, data=data, headers=headers, method='POST')
 
     def randstate(self):
         chars = string.ascii_letters + '1234567890'

@@ -130,10 +130,7 @@ def post_slash_cmd(event):
 @logger.bind
 def post(event, context=None):
     event = EventBridgeEvent(event)
-    result = slack.post(
-        event.detail, event.detail_type,
-        authorization=f'Bearer { slack.token }',
-    )
+    result = slack.post(event.detail_type, **event.detail)
     return events.publish(f'result/{ event.detail_type }', result)
 
 

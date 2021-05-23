@@ -243,13 +243,16 @@ class TestIndex:
 
     def test_post(self):
         event = {
-            'detail': {'text': 'FIZZ'},
             'detail-type': 'api/chat.postMessage',
+            'detail': {
+                'body': json.dumps({'text': 'FIZZ'}),
+                'headers': {'content-type': 'application/json'}
+            },
         }
         index.slack.post = mock.MagicMock()
         index.post(event)
         index.slack.post.assert_called_once_with(
-            {'text': 'FIZZ'},
             'api/chat.postMessage',
-            authorization='Bearer token'
+            body=json.dumps({'text': 'FIZZ'}),
+            headers={'content-type': 'application/json'}
         )
