@@ -38,7 +38,7 @@ class Slack:
         # Execute request
         return route(event)
 
-    def install(self, event, method):
+    def install(self, event, path):
         # Handle denials
         if event.query.get('error'):
             logger.error(event.query['error'])
@@ -54,15 +54,16 @@ class Slack:
             raise Forbidden('States do not match')
 
         # Set up OAuth
-        payload = dict(
+        payload = urlencode(dict(
             code=event.query.get('code'),
             client_id=self.client_id,
             client_secret=self.client_secret,
             redirect_uri=self.oauth_redirect_uri,
-        )
+        ))
 
         # Execute OAuth and redirect
-        result = self.post(payload, method)
+        headers = {'content-type': 'application/x-www-form-urlencoded'}
+        result = self.post(path, payload, headers)
         app_id = result.get('app_id')
         team_id = result.get('team', {}).get('id')
         channel_id = result.get('incoming_webhook', {}).get('channel_id')
