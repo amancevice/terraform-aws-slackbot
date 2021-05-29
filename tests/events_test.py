@@ -2,6 +2,8 @@ import base64
 import json
 from unittest.mock import MagicMock
 
+import pytest
+
 from src.events import (Event, EventBridgeEvent, HttpEvent, Events)
 
 
@@ -12,19 +14,27 @@ class TestEvent:
     def test_getitem(self):
         assert self.subject['fizz'] == 'buzz'
 
+    def test_len(self):
+        assert len(self.subject) == 1
+
 
 class TestEventBridgeEvent:
     def setup(self):
         self.subject = EventBridgeEvent({
-            'detail': {'fizz': 'buzz'},
-            'detail-type': 'jazz-fuzz',
+            'url': 'https://slack.com/api/some.method',
+            'body': '{"fizz": "buzz"}',
+            'headers': {'content-type': 'application/json; charset=utf-8'},
+            'task-token': '<token>',
         })
 
-    def test_detail(self):
-        assert self.subject.detail == {'fizz': 'buzz'}
-
-    def test_detail_type(self):
-        assert self.subject.detail_type == 'jazz-fuzz'
+    @pytest.mark.parametrize(('attr', 'exp'), [
+        ('url', 'https://slack.com/api/some.method'),
+        ('body', '{"fizz": "buzz"}'),
+        ('headers', {'content-type': 'application/json; charset=utf-8'}),
+        ('task_token', '<token>'),
+    ])
+    def test_attr(self, attr, exp):
+        assert getattr(self.subject, attr) == exp
 
 
 class TestHttpEvent:

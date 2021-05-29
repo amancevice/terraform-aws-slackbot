@@ -131,6 +131,7 @@ resource "aws_cloudwatch_event_rule" "post" {
 resource "aws_cloudwatch_event_target" "post" {
   arn            = aws_lambda_function.post.arn
   event_bus_name = aws_cloudwatch_event_rule.post.event_bus_name
+  input_path     = "$.detail"
   rule           = aws_cloudwatch_event_rule.post.name
   target_id      = "slack-post"
 }

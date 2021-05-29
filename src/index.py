@@ -3,7 +3,7 @@ import os
 from urllib.parse import parse_qsl
 
 from errors import (Forbidden, NotFound)
-from events import (Events, HttpEvent, EventBridgeEvent)
+from events import (Events, EventBridgeEvent, HttpEvent)
 from logger import logger
 from secrets import export
 from slack import Slack
@@ -132,7 +132,7 @@ def post_slash_cmd(event):
 @logger.bind
 def post(event, context=None):
     event = EventBridgeEvent(event)
-    result = slack.post(**event.detail)
+    result = slack.post(event.url, event.body, event.headers)
     if result['ok']:
         events.publish('result', result)
     if result['ok'] and event.task_token:

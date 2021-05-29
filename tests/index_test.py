@@ -245,37 +245,29 @@ class TestIndex:
     def test_post(self):
         index.slack.post.return_value = {'ok': True}
         event = {
-            'detail-type': 'post',
-            'detail': {
-                'url': 'https://slack.com/api/chat.postMessage',
-                'body': json.dumps({'text': 'FIZZ'}),
-                'headers': {'content-type': 'application/json; charset=utf-8'},
-                'task-token': '<token>',
-            },
-        }
-        index.post(event)
-        index.slack.post.assert_called_once_with(**{
             'url': 'https://slack.com/api/chat.postMessage',
             'body': json.dumps({'text': 'FIZZ'}),
             'headers': {'content-type': 'application/json; charset=utf-8'},
             'task-token': '<token>',
-        })
+        }
+        index.post(event)
+        index.slack.post.assert_called_once_with(
+            'https://slack.com/api/chat.postMessage',
+            json.dumps({'text': 'FIZZ'}),
+            {'content-type': 'application/json; charset=utf-8'},
+        )
 
     def test_post_fail(self):
         index.slack.post.return_value = {'ok': False, 'error': 'fizz'}
         event = {
-            'detail-type': 'post',
-            'detail': {
-                'url': 'https://slack.com/api/chat.postMessage',
-                'body': json.dumps({'text': 'FIZZ'}),
-                'headers': {'content-type': 'application/json; charset=utf-8'},
-                'task-token': '<token>',
-            },
-        }
-        index.post(event)
-        index.slack.post.assert_called_once_with(**{
             'url': 'https://slack.com/api/chat.postMessage',
             'body': json.dumps({'text': 'FIZZ'}),
             'headers': {'content-type': 'application/json; charset=utf-8'},
             'task-token': '<token>',
-        })
+        }
+        index.post(event)
+        index.slack.post.assert_called_once_with(
+            'https://slack.com/api/chat.postMessage',
+            json.dumps({'text': 'FIZZ'}),
+            {'content-type': 'application/json; charset=utf-8'},
+        )

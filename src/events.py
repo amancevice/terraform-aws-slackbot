@@ -1,52 +1,63 @@
 import base64
 import json
+from collections.abc import Mapping
 
 import boto3
 
 from logger import logger
 
 
-class Event:
+class Event(Mapping):
     def __init__(self, event):
         self.event = event
 
     def __getitem__(self, key):
         return self.event[key]
 
+    def __iter__(self):
+        return iter(self.event)
+
+    def __len__(self):
+        return len(self.event)
+
 
 class EventBridgeEvent(Event):
     @property
-    def detail(self):
-        return self.event['detail']
+    def body(self):
+        return self.get('body')
 
     @property
-    def detail_type(self):
-        return self.event['detail-type']
+    def headers(self):
+        return self.get('headers')
 
     @property
     def task_token(self):
-        return self.detail.get('task-token')
+        return self.get('task-token')
+
+    @property
+    def url(self):
+        return self.get('url')
 
 
 class HttpEvent(Event):
     @property
     def body(self):
-        if self.event.get('isBase64Encoded'):
-            return base64.b64decode(self.event['body']).decode()
-        return self.event.get('body')
+        if self.get('isBase64Encoded'):
+            return base64.b64decode(self['body']).decode()
+        return self.get('body')
 
     @property
     def headers(self):
-        headers = self.event.get('headers') or {}
+        headers = self.get('headers') or {}
         return {k.lower(): v for k, v in headers.items()}
 
     @property
     def query(self):
-        return self.event['queryStringParameters']
+        return self.get('queryStringParameters')
 
     @property
     def route_key(self):
-        return self.event.get('routeKey')
+        return self.get('routeKey')
 
     @property
     def trace_header(self):
