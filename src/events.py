@@ -23,6 +23,10 @@ class EventBridgeEvent(Event):
     def detail_type(self):
         return self.event['detail-type']
 
+    @property
+    def task_token(self):
+        return self.detail.get('task-token')
+
 
 class HttpEvent(Event):
     @property

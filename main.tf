@@ -123,7 +123,7 @@ resource "aws_cloudwatch_event_rule" "post" {
   description    = local.events.post.rule_description
 
   event_pattern = jsonencode({
-    detail-type = [{ prefix = "api/" }]
+    detail-type = ["post"]
     source      = [local.events.source]
   })
 }
@@ -252,6 +252,12 @@ data "aws_iam_policy_document" "inline" {
       "logs:PutLogEvents",
     ]
 
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "SendTaskStatus"
+    actions   = ["states:SendTask*"]
     resources = ["*"]
   }
 }

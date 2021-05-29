@@ -97,7 +97,7 @@ class TestSlack:
 
     def test_post(self):
         ret = self.subject.post(
-            'api/chat.postMessage',
+            'https://slack.com/api/chat.postMessage',
             json.dumps({'text': 'FIZZ'}),
             {'content-type': 'application/json; charset=utf-8'},
         )

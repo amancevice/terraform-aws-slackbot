@@ -7,6 +7,7 @@ from events import (Events, HttpEvent, EventBridgeEvent)
 from logger import logger
 from secrets import export
 from slack import Slack
+from states import States
 
 export(SecretId=os.getenv('SECRET_ID'))
 EVENTS_BUS_NAME = os.getenv('EVENTS_BUS_NAME')
@@ -35,6 +36,7 @@ slack = Slack(
     token=SLACK_TOKEN,
     verify=not SLACK_DISABLE_VERIFICATION,
 )
+states = States()
 
 
 @slack.route('GET /health')
@@ -130,8 +132,13 @@ def post_slash_cmd(event):
 @logger.bind
 def post(event, context=None):
     event = EventBridgeEvent(event)
-    result = slack.post(event.detail_type, **event.detail)
-    events.publish(f'result/{ event.detail_type }', result)
+    result = slack.post(**event.detail)
+    if result['ok']:
+        events.publish('result', result)
+    if result['ok'] and event.task_token:
+        states.succeed(event.task_token, json.dumps(result))
+    elif event.task_token:
+        states.fail(event.task_token, result['error'], json.dumps(result))
     return result
 
 

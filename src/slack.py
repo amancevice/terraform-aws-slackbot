@@ -86,28 +86,27 @@ class Slack:
         })
         return urlunsplit(url + [query, fragment])
 
-    def post(self, path, body=None, headers=None):
+    def post(self, url, body=None, headers=None, **_):
         # Prepare request
         data = body.encode('utf-8')
         headers = {k.lower(): v for k, v in (headers or {}).items()}
 
         # Execute request
-        url = f'https://slack.com/{ path }'
         logger.info('POST %s %s', url, body)
         req = Request(url=url, data=data, headers=headers, method='POST')
         res = urlopen(req)
 
         # Parse response
         resdata = res.read().decode()
-        ok = False
-        if res.headers['content-type'].startswith('application/json'):
-            resdata = json.loads(resdata)
-            ok = resdata['ok']
+        try:
+            resjson = json.loads(resdata)
+        except Exception:  # pragma: no cover
+            resjson = {'ok': False}
 
         # Log response & return
-        log = logger.info if ok else logger.error
-        log('RESPONSE [%d] %s', res.status, json.dumps(resdata))
-        return resdata
+        log = logger.info if resjson['ok'] else logger.error
+        log('RESPONSE [%d] %s', res.status, resdata)
+        return resjson
 
     def randstate(self):
         chars = string.ascii_letters + '1234567890'
