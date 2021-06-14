@@ -51,16 +51,15 @@ def get_install(event):
 
 @slack.route('GET /oauth')
 def get_oauth(event):
-    detail, location = slack.install(event, 'api/oauth.access')
+    detail, location = slack.install(event, 'oauth.access')
     events.publish('oauth', detail, event.headers.get('x-amzn-trace-id'))
     return slack.respond(302, None, location=location)
 
 
 @slack.route('GET /oauth/v2')
 def get_oauth_v2(event):
-    detail, location = slack.install(event, 'api/oauth.v2.access')
-    if detail:
-        events.publish('oauth', detail, event.headers.get('x-amzn-trace-id'))
+    detail, location = slack.install(event, 'oauth.v2.access')
+    events.publish('oauth', detail, event.headers.get('x-amzn-trace-id'))
     return slack.respond(302, None, location=location)
 
 

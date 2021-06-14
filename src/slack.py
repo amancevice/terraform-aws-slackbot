@@ -38,7 +38,7 @@ class Slack:
         # Execute request
         return route(event)
 
-    def install(self, event, path):
+    def install(self, event, method='oauth.v2.access'):
         # Handle denials
         if event.query.get('error'):
             logger.error(event.query['error'])
@@ -62,8 +62,9 @@ class Slack:
         ))
 
         # Execute OAuth and redirect
+        url = f'https://slack.com/api/{ method }'
         headers = {'content-type': 'application/x-www-form-urlencoded'}
-        result = self.post(path, payload, headers)
+        result = self.post(url, payload, headers)
         app_id = result.get('app_id')
         team_id = result.get('team', {}).get('id')
         channel_id = result.get('incoming_webhook', {}).get('channel_id')
