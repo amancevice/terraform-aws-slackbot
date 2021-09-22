@@ -105,7 +105,7 @@ variable "lambda_post_memory_size" {
 
 variable "lambda_post_runtime" {
   description = "Lambda function runtime"
-  default     = "python3.8"
+  default     = "python3.9"
 }
 
 variable "lambda_post_timeout" {
@@ -135,7 +135,7 @@ variable "lambda_proxy_memory_size" {
 
 variable "lambda_proxy_runtime" {
   description = "Lambda function runtime"
-  default     = "python3.8"
+  default     = "python3.9"
 }
 
 variable "lambda_proxy_timeout" {
