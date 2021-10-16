@@ -27,7 +27,8 @@ locals {
     source = var.event_source
 
     bus = {
-      arn = var.event_bus_arn == null ? "arn:${local.aws.partition}:events:${local.aws.region}:${local.aws.account_id}:event-bus/default" : var.event_bus_arn
+      arn  = data.aws_arn.event_bus.arn
+      name = split("/", data.aws_arn.event_bus.resource)[1]
     }
 
     post = {
@@ -74,7 +75,8 @@ locals {
 
     environment_variables = {
       SECRET_ID       = aws_secretsmanager_secret.secret.name
-      EVENTS_BUS_NAME = aws_cloudwatch_event_rule.post.event_bus_name
+      EVENTS_BUS_NAME = local.events.bus.name
+      EVENT_SOURCE    = local.events.source
     }
 
     permissions = [
@@ -117,8 +119,12 @@ data "aws_region" "current" {}
 
 # EVENTS
 
+data "aws_arn" "event_bus" {
+  arn = var.event_bus_arn == null ? "arn:${local.aws.partition}:events:${local.aws.region}:${local.aws.account_id}:event-bus/default" : var.event_bus_arn
+}
+
 resource "aws_cloudwatch_event_rule" "post" {
-  event_bus_name = split("/", local.events.bus.arn)[1]
+  event_bus_name = local.events.bus.name
   name           = local.events.post.rule_name
   description    = local.events.post.rule_description
 
@@ -130,7 +136,7 @@ resource "aws_cloudwatch_event_rule" "post" {
 
 resource "aws_cloudwatch_event_target" "post" {
   arn            = aws_lambda_function.post.arn
-  event_bus_name = aws_cloudwatch_event_rule.post.event_bus_name
+  event_bus_name = local.events.bus.name
   input_path     = "$.detail"
   rule           = aws_cloudwatch_event_rule.post.name
   target_id      = "slack-post"
