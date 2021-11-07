@@ -4,7 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.logger import getLogger
+from src import logger
+
+logger.LOG_JSON_INDENT = '2'
 
 
 class TestLogger:
@@ -26,23 +28,27 @@ class TestLogger:
         ),
     ])
     def test_bind(self, event, context, name, awsRequestId):
-        logger = getLogger(name, stream=self.stream)
-        logger.setLevel('DEBUG')
+        log = logger.getLogger(name, stream=self.stream)
+        log.setLevel('DEBUG')
 
-        @logger.bind
+        @log.bind
         def handler(event=None, context=None):
-            logger.warning('TEST')
+            log.warning('TEST')
             return {'ok': True}
 
-        logger.debug('BEFORE CONTEXT')
+        log.debug('BEFORE CONTEXT')
         handler(event, context)
-        logger.debug('AFTER CONTEXT')
+        log.debug('AFTER CONTEXT')
 
         exp = dedent(f"""\
             DEBUG - BEFORE CONTEXT
-            INFO {awsRequestId} EVENT {{"fizz": "buzz"}}
+            INFO {awsRequestId} EVENT {{
+              "fizz": "buzz"
+            }}
             WARNING {awsRequestId} TEST
-            INFO {awsRequestId} RETURN {{"ok": true}}
+            INFO {awsRequestId} RETURN {{
+              "ok": true
+            }}
             DEBUG - AFTER CONTEXT
         """)
         self.stream.seek(0)

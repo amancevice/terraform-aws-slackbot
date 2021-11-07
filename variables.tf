@@ -154,6 +154,11 @@ variable "log_group_tags" {
   default     = {}
 }
 
+variable "log_json_indent" {
+  description = "Indent for JSON logger"
+  default     = null
+}
+
 variable "role_description" {
   description = "Lambda role description"
   default     = "Slackbot resource access"

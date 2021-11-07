@@ -80,5 +80,5 @@ class Events:
             TraceHeader=trace_header,
         )
         params = dict(Entries=[{k: v for k, v in entry.items() if v}])
-        logger.info('PUT EVENTS %s', json.dumps(params))
+        logger.info('PUT EVENTS %s', logger.json(params))
         return self.client.put_events(**params)

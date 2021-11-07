@@ -48,7 +48,11 @@ class Slack:
 
         # Check state
         if self.state != event.query['state']:
-            logger.error('States do not match')
+            logger.error(
+                'States do not match: %r != %r',
+                self.state,
+                event.query['state'],
+            )
             if self.oauth_error_uri:
                 return None, self.oauth_error_uri
             raise Forbidden('States do not match')

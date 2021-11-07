@@ -2,6 +2,7 @@ import json
 import logging
 import os
 
+LOG_JSON_INDENT = os.getenv('LOG_JSON_INDENT') or None
 LOG_LEVEL = os.getenv('LOG_LEVEL') or logging.INFO
 LOG_FORMAT = os.getenv('LOG_FORMAT') \
     or '%(levelname)s %(awsRequestId)s %(message)s'
@@ -71,9 +72,9 @@ class LambdaLoggerAdapter(logging.LoggerAdapter):
         def wrapper(event=None, context=None):
             try:
                 self.addContext(context)
-                self.info('EVENT %s', json.dumps(event, default=str))
+                self.info('EVENT %s', self.json(event))
                 result = handler(event, context)
-                self.info('RETURN %s', json.dumps(result, default=str))
+                self.info('RETURN %s', self.json(result))
                 return result
             finally:
                 self.dropContext()
@@ -96,6 +97,15 @@ class LambdaLoggerAdapter(logging.LoggerAdapter):
         """
         self.extra.update(awsRequestId='-')
         return self
+
+    def json(self, obj, **params):
+        """
+        Helper to convert object to JSON.
+        """
+        params.setdefault('default', str)
+        if LOG_JSON_INDENT:
+            params.update(indent=int(LOG_JSON_INDENT))
+        return json.dumps(obj, **params)
 
 
 def getLogger(name, level=None, format_string=None, stream=None):
