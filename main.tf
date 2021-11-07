@@ -74,7 +74,7 @@ locals {
     }
 
     environment_variables = {
-      EVENTS_BUS_NAME = local.events.bus.name
+      EVENT_BUS_NAME  = local.events.bus.name
       EVENT_SOURCE    = local.events.source
       LOG_JSON_INDENT = var.log_json_indent
       SECRET_ID       = aws_secretsmanager_secret.secret.name

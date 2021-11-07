@@ -10,8 +10,8 @@ from slack import Slack
 from states import States
 
 export(SecretId=os.getenv('SECRET_ID'))
-EVENTS_BUS_NAME = os.getenv('EVENTS_BUS_NAME')
-EVENTS_SOURCE = os.getenv('EVENTS_SOURCE')
+EVENT_BUS_NAME = os.getenv('EVENT_BUS_NAME')
+EVENT_SOURCE = os.getenv('EVENT_SOURCE')
 SLACK_CLIENT_ID = os.getenv('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.getenv('SLACK_CLIENT_SECRET')
 SLACK_DISABLE_VERIFICATION = os.getenv('SLACK_DISABLE_VERIFICATION')
@@ -23,7 +23,7 @@ SLACK_SIGNING_SECRET = os.getenv('SLACK_SIGNING_SECRET')
 SLACK_SIGNING_VERSION = os.getenv('SLACK_SIGNING_VERSION')
 SLACK_TOKEN = os.getenv('SLACK_TOKEN')
 
-events = Events(bus=EVENTS_BUS_NAME, source=EVENTS_SOURCE)
+events = Events(bus=EVENT_BUS_NAME, source=EVENT_SOURCE)
 slack = Slack(
     client_id=SLACK_CLIENT_ID,
     client_secret=SLACK_CLIENT_SECRET,
