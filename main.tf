@@ -112,13 +112,17 @@ locals {
   }
 }
 
-# AWS
+###########
+#   AWS   #
+###########
 
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
-# EVENTS
+##############
+#   EVENTS   #
+##############
 
 data "aws_arn" "event_bus" {
   arn = var.event_bus_arn == null ? "arn:${local.aws.partition}:events:${local.aws.region}:${local.aws.account_id}:event-bus/default" : var.event_bus_arn
@@ -143,7 +147,9 @@ resource "aws_cloudwatch_event_target" "post" {
   target_id      = "slack-post"
 }
 
-# HTTP API
+################################
+#   HTTP API :: INTEGRATIONS   #
+################################
 
 resource "aws_apigatewayv2_integration" "proxy" {
   api_id                 = local.http_api.id
@@ -155,6 +161,10 @@ resource "aws_apigatewayv2_integration" "proxy" {
   payload_format_version = "2.0"
   timeout_milliseconds   = 3000
 }
+
+##########################
+#   HTTP API :: ROUTES   #
+##########################
 
 resource "aws_apigatewayv2_route" "post_callbacks" {
   api_id             = local.http_api.id
@@ -219,7 +229,9 @@ resource "aws_apigatewayv2_route" "post_slash_cmd" {
   target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
 }
 
-# IAM
+###########
+#   IAM   #
+###########
 
 data "aws_iam_policy_document" "assume_role" {
   statement {
@@ -301,7 +313,9 @@ resource "aws_lambda_permission" "invoke_post" {
   statement_id  = "AllowExecutionFromEventBridge"
 }
 
-# LAMBDA FUNCTIONS
+########################
+#   LAMBDA FUNCTIONS   #
+########################
 
 data "archive_file" "package" {
   source_dir  = "${path.module}/src"
@@ -347,7 +361,9 @@ resource "aws_lambda_function" "proxy" {
   }
 }
 
-# LOG GROUPS
+##################
+#   LOG GROUPS   #
+##################
 
 resource "aws_cloudwatch_log_group" "post_logs" {
   name              = "/aws/lambda/${aws_lambda_function.post.function_name}"
@@ -361,7 +377,9 @@ resource "aws_cloudwatch_log_group" "proxy_logs" {
   tags              = local.log_group.tags
 }
 
-# SECRETS
+###############
+#   SECRETS   #
+###############
 
 resource "aws_kms_key" "key" {
   deletion_window_in_days = local.kms_key.deletion_window_in_days
