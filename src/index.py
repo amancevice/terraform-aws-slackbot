@@ -89,8 +89,8 @@ def post_callbacks(event):
     # Publish event
     events.publish('callback', detail, event.headers.get('x-amzn-trace-id'))
 
-    # Respond 204 NO CONTENT
-    return slack.respond(204)
+    # Respond 200 OK
+    return slack.respond(200)
 
 
 @slack.route('POST /events')
@@ -109,8 +109,8 @@ def post_events(event):
     # Publish event
     events.publish('event', detail, event.headers.get('x-amzn-trace-id'))
 
-    # Respond 204 NO CONTENT for normal events
-    return slack.respond(204)
+    # Respond 200 OK
+    return slack.respond(200)
 
 
 @slack.route('POST /slash/{cmd}')
@@ -124,8 +124,8 @@ def post_slash_cmd(event):
     # Publish event
     events.publish('slash', detail, event.headers.get('x-amzn-trace-id'))
 
-    # Respond 204 NO CONTENT
-    return slack.respond(204)
+    # Respond 200 OK
+    return slack.respond(200)
 
 
 @logger.bind
