@@ -129,7 +129,7 @@ class TestIndex:
             'headers': {'x-amzn-trace-id': '<trace-id>'}
         })
         exp = {
-            'statusCode': 204,
+            'statusCode': 200,
             'body': None,
             'headers': {
                 'content-type': 'application/json; charset=utf-8',
@@ -150,7 +150,7 @@ class TestIndex:
             'headers': {'x-amzn-trace-id': '<trace-id>'}
         })
         exp = {
-            'statusCode': 204,
+            'statusCode': 200,
             'body': None,
             'headers': {
                 'content-type': 'application/json; charset=utf-8',
@@ -188,7 +188,7 @@ class TestIndex:
             'headers': {'x-amzn-trace-id': '<trace-id>'}
         })
         exp = {
-            'statusCode': 204,
+            'statusCode': 200,
             'body': None,
             'headers': {
                 'content-type': 'application/json; charset=utf-8',
