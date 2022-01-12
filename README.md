@@ -131,7 +131,27 @@ module "slackbot" {
 }
 ```
 
-Use the [`slackbot-secrets`](https://github.com/amancevice/terraform-aws-slackbot-secrets) module to add your Slack credentials
+### Override API Routes
+
+By default, all API routes are proxied to a single Lambda function that—after verifying the request signature—publishes payloads to EventBridge for asynchronous processing. However, sometimes a user might want to override this behavior. Interactive components, for example, can take advantage of a synchronous request-response model.
+
+The following example illustrates how to override an API route with your own function:
+
+```terraform
+resource "aws_lambda_function" "my_override" { /* … */ }
+
+module "slackbot" {
+  # …
+
+  lambda_overrides = {
+    "POST /callbacks" = aws_lambda_function.my_override
+  }
+}
+```
+
+### Secrets
+
+Use the [`slackbot-secrets`](https://github.com/amancevice/terraform-aws-slackbot-secrets) module to add your Slack credentials.
 
 > **WARNING** Be extremely cautious when using this module. **NEVER** store secrets in plaintext and encrypt your remote state. I recommend applying this module in a workspace without a remote backend.
 
@@ -156,9 +176,11 @@ module "slackbot_secrets" {
 
 In order to process a given event you will need to create an EventBridge rule with a pattern that targets a specific event.
 
+### Event Patterns
+
 The following examples show how a subscription might me made in Terraform:
 
-**Callback**
+#### Callback
 
 ```terraform
 resource "aws_cloudwatch_event_rule" "callback" {
@@ -169,7 +191,7 @@ resource "aws_cloudwatch_event_rule" "callback" {
 }
 ```
 
-**Event**
+#### Event
 
 ```terraform
 resource "aws_cloudwatch_event_rule" "event" {
@@ -180,7 +202,7 @@ resource "aws_cloudwatch_event_rule" "event" {
 }
 ```
 
-**OAuth**
+#### OAuth
 
 ```terraform
 resource "aws_cloudwatch_event_rule" "oauth" {
@@ -191,7 +213,7 @@ resource "aws_cloudwatch_event_rule" "oauth" {
 }
 ```
 
-**Slash Command**
+#### Slash Command
 
 ```terraform
 resource "aws_cloudwatch_event_rule" "slash" {
@@ -206,7 +228,7 @@ resource "aws_cloudwatch_event_rule" "slash" {
 
 Some plugins are provided that can be hooked into the Slackbot out-of-the-box:
 
-**Slash Command**
+### Slash Command Plugin
 
 ```terraform
 module "slackbot_slash_command" {

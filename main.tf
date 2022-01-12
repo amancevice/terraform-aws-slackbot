@@ -80,17 +80,19 @@ locals {
       SECRET_ID       = aws_secretsmanager_secret.secret.name
     }
 
-    permissions = [
-      "${local.http_api.execution_arn}/*/*/health",
-      "${local.http_api.execution_arn}/*/*/install",
-      "${local.http_api.execution_arn}/*/*/oauth",
-      "${local.http_api.execution_arn}/*/*/oauth/v2",
-      "${local.http_api.execution_arn}/*/*/callbacks",
-      "${local.http_api.execution_arn}/*/*/events",
-      "${local.http_api.execution_arn}/*/*/slash/*",
-    ]
-
     tags = var.lambda_tags
+  }
+
+  lambda_functions = {
+    "GET /health"       = lookup(var.lambda_overrides, "GET /health", aws_lambda_function.proxy)
+    "GET /install"      = lookup(var.lambda_overrides, "GET /install", aws_lambda_function.proxy)
+    "GET /oauth"        = lookup(var.lambda_overrides, "GET /oauth", aws_lambda_function.proxy)
+    "GET /oauth/v2"     = lookup(var.lambda_overrides, "GET /oauth/v2", aws_lambda_function.proxy)
+    "HEAD /health"      = lookup(var.lambda_overrides, "HEAD /health", aws_lambda_function.proxy)
+    "HEAD /install"     = lookup(var.lambda_overrides, "HEAD /install", aws_lambda_function.proxy)
+    "POST /callbacks"   = lookup(var.lambda_overrides, "POST /callbacks", aws_lambda_function.proxy)
+    "POST /events"      = lookup(var.lambda_overrides, "POST /events", aws_lambda_function.proxy)
+    "POST /slash/{cmd}" = lookup(var.lambda_overrides, "POST /slash/{cmd}", aws_lambda_function.proxy)
   }
 
   log_group = {
@@ -151,13 +153,101 @@ resource "aws_cloudwatch_event_target" "post" {
 #   HTTP API :: INTEGRATIONS   #
 ################################
 
-resource "aws_apigatewayv2_integration" "proxy" {
+resource "aws_apigatewayv2_integration" "get_health" {
   api_id                 = local.http_api.id
   connection_type        = "INTERNET"
   description            = local.http_api.integration_description
   integration_method     = "POST"
   integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.proxy.invoke_arn
+  integration_uri        = local.lambda_functions["GET /health"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "get_install" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["GET /install"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "get_oauth" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["GET /oauth"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "get_oauth_v2" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["GET /oauth/v2"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "head_health" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["HEAD /health"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "head_install" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["HEAD /install"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "post_callbacks" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["POST /callbacks"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "post_events" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["POST /events"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 3000
+}
+
+resource "aws_apigatewayv2_integration" "post_slash_cmd" {
+  api_id                 = local.http_api.id
+  connection_type        = "INTERNET"
+  description            = local.http_api.integration_description
+  integration_method     = "POST"
+  integration_type       = "AWS_PROXY"
+  integration_uri        = local.lambda_functions["POST /slash/{cmd}"].invoke_arn
   payload_format_version = "2.0"
   timeout_milliseconds   = 3000
 }
@@ -166,67 +256,67 @@ resource "aws_apigatewayv2_integration" "proxy" {
 #   HTTP API :: ROUTES   #
 ##########################
 
-resource "aws_apigatewayv2_route" "post_callbacks" {
-  api_id             = local.http_api.id
-  route_key          = "POST /callbacks"
-  authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
-}
-
-resource "aws_apigatewayv2_route" "post_events" {
-  api_id             = local.http_api.id
-  route_key          = "POST /events"
-  authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
-}
-
 resource "aws_apigatewayv2_route" "get_health" {
   api_id             = local.http_api.id
   route_key          = "GET /health"
   authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.get_health.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_install" {
   api_id             = local.http_api.id
   route_key          = "GET /install"
   authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
-}
-
-resource "aws_apigatewayv2_route" "head_install" {
-  api_id             = local.http_api.id
-  route_key          = "HEAD /install"
-  authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
-}
-
-resource "aws_apigatewayv2_route" "head_health" {
-  api_id             = local.http_api.id
-  route_key          = "HEAD /health"
-  authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.get_install.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_oauth" {
   api_id             = local.http_api.id
   route_key          = "GET /oauth"
   authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.get_oauth.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_oauth_v2" {
   api_id             = local.http_api.id
   route_key          = "GET /oauth/v2"
   authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.get_oauth_v2.id}"
+}
+
+resource "aws_apigatewayv2_route" "head_health" {
+  api_id             = local.http_api.id
+  route_key          = "HEAD /health"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.head_health.id}"
+}
+
+resource "aws_apigatewayv2_route" "head_install" {
+  api_id             = local.http_api.id
+  route_key          = "HEAD /install"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.head_install.id}"
+}
+
+resource "aws_apigatewayv2_route" "post_callbacks" {
+  api_id             = local.http_api.id
+  route_key          = "POST /callbacks"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.post_callbacks.id}"
+}
+
+resource "aws_apigatewayv2_route" "post_events" {
+  api_id             = local.http_api.id
+  route_key          = "POST /events"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.post_events.id}"
 }
 
 resource "aws_apigatewayv2_route" "post_slash_cmd" {
   api_id             = local.http_api.id
   route_key          = "POST /slash/{cmd}"
   authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.proxy.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.post_slash_cmd.id}"
 }
 
 ###########
@@ -296,23 +386,6 @@ resource "aws_iam_role_policy" "api" {
   policy = data.aws_iam_policy_document.inline.json
 }
 
-resource "aws_lambda_permission" "invoke_api" {
-  count         = length(local.lambda.permissions)
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.proxy.arn
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = element(local.lambda.permissions, count.index)
-  statement_id  = "AllowAPIGatewayV2-${count.index}"
-}
-
-resource "aws_lambda_permission" "invoke_post" {
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.post.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.post.arn
-  statement_id  = "AllowExecutionFromEventBridge"
-}
-
 ########################
 #   LAMBDA FUNCTIONS   #
 ########################
@@ -342,6 +415,14 @@ resource "aws_lambda_function" "post" {
   }
 }
 
+resource "aws_lambda_permission" "post" {
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.post.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.post.arn
+  statement_id  = "AllowExecutionFromEventBridge"
+}
+
 resource "aws_lambda_function" "proxy" {
   description      = local.lambda.proxy.description
   filename         = data.archive_file.package.output_path
@@ -359,6 +440,78 @@ resource "aws_lambda_function" "proxy" {
   environment {
     variables = local.lambda.environment_variables
   }
+}
+
+resource "aws_lambda_permission" "get_health" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["GET /health"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/GET/health"
+  statement_id  = "GetHealth"
+}
+
+resource "aws_lambda_permission" "get_install" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["GET /install"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/GET/install"
+  statement_id  = "GetInstall"
+}
+
+resource "aws_lambda_permission" "get_oauth" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["GET /oauth"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/GET/oauth"
+  statement_id  = "GetOAuth"
+}
+
+resource "aws_lambda_permission" "get_oauth_v2" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["GET /oauth/v2"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/GET/oauth/v2"
+  statement_id  = "GetOAuthV2"
+}
+
+resource "aws_lambda_permission" "head_health" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["HEAD /health"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/HEAD/health"
+  statement_id  = "HeadHealth"
+}
+
+resource "aws_lambda_permission" "head_install" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["HEAD /install"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/HEAD/install"
+  statement_id  = "HeadInstall"
+}
+
+resource "aws_lambda_permission" "post_callbacks" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["POST /callbacks"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/POST/callbacks"
+  statement_id  = "PostCallbacks"
+}
+
+resource "aws_lambda_permission" "post_events" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["POST /events"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/POST/events"
+  statement_id  = "PostEvents"
+}
+
+resource "aws_lambda_permission" "post_slash_cmd" {
+  action        = "lambda:InvokeFunction"
+  function_name = local.lambda_functions["POST /slash/{cmd}"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${local.http_api.execution_arn}/*/POST/slash/*"
+  statement_id  = "PostSlashCmd"
 }
 
 ##################

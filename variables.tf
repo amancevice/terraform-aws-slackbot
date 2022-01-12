@@ -83,6 +83,12 @@ variable "lambda_tags" {
   default     = {}
 }
 
+variable "lambda_overrides" {
+  description = "API Route => Lambda invoke ARN overrides"
+  default     = {}
+  type        = map(any)
+}
+
 variable "lambda_post_description" {
   description = "Lambda function description"
   default     = "Slack API handler"
