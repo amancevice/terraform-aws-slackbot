@@ -92,7 +92,7 @@ Add the `slackbot module`
 ```terraform
 module "slackbot" {
   source  = "amancevice/slackbot/aws"
-  version = "~> 23.1"
+  version = "~> 23.2"
 
   # Required
 
