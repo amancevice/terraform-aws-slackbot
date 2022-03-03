@@ -92,7 +92,7 @@ Add the `slackbot module`
 ```terraform
 module "slackbot" {
   source  = "amancevice/slackbot/aws"
-  version = "~> 22.0"
+  version = "~> 23.1"
 
   # Required
 
@@ -111,13 +111,13 @@ module "slackbot" {
   lambda_post_description = "My Slack post lambda description"
   lambda_post_publish     = true | false
   lambda_post_memory_size = 128
-  lambda_post_runtime     = "python3.8"
+  lambda_post_runtime     = "python3.9"
   lambda_post_timeout     = 3
 
   lambda_proxy_description = "My API proxy lambda description"
   lambda_proxy_publish     = true | false
   lambda_proxy_memory_size = 128
-  lambda_proxy_runtime     = "python3.8"
+  lambda_proxy_runtime     = "python3.9"
   lambda_proxy_timeout     = 3
 
   log_group_retention_in_days = 14
@@ -133,7 +133,7 @@ module "slackbot" {
 
 Use the [`slackbot-secrets`](https://github.com/amancevice/terraform-aws-slackbot-secrets) module to add your Slack credentials
 
-> **WARNING** Be extremely cautious when using this module. **NEVER** store secrets in plaintext and encrypt your remote state. I recommend applying this module in a workspace without a remote backend.
+> **WARNING** Be extremely cautious when using this module. **NEVER** store secrets in plaintext and encrypt your remote state. I recommend applying this module in a separate workspace without a remote backend.
 
 ```terraform
 module "slackbot_secrets" {
@@ -231,7 +231,6 @@ module "slackbot_slash_command" {
   # Optional
 
   lambda_description          = "Slackbot handler for /example"
-  lambda_kms_key_arn          = "<kms-key-arn>"
   lambda_memory_size          = 128
   lambda_timeout              = 3
   log_group_retention_in_days = 30
