@@ -1,195 +1,180 @@
-variable "base_path" {
-  description = "Slack API base path"
-  default     = "/"
+###############
+#   GENERAL   #
+###############
+
+variable "log_retention_in_days" {
+  type        = number
+  description = "Slackbot log retention in days"
+  default     = 14
 }
 
-variable "event_bus_arn" {
-  description = "EventBridge bus ARN"
+variable "tags" {
+  type        = map(string)
+  description = "Slackbot tags"
   default     = null
 }
 
-variable "event_post_rule_description" {
-  description = "Post Lambda EventBridge rule name"
-  default     = "Capture events destined for post Lambda"
-}
+###########
+#   API   #
+###########
 
-variable "event_post_rule_name" {
-  description = "Post Lambda EventBridge rule name"
-  default     = "slack-post"
-}
-
-variable "event_source" {
-  description = "EventBridge source"
-  default     = "slack"
-}
-
-variable "http_api_execution_arn" {
-  description = "API Gateway v2 HTTP API execution ARN"
-}
-
-variable "http_api_id" {
-  description = "API Gateway v2 HTTP API ID"
-}
-
-variable "http_api_integration_description" {
-  description = "API Gateway v2 HTTP API integration description"
-  default     = "Slack request Lambda integration"
-}
-
-variable "kms_key_alias" {
-  description = "KMS Key alias"
-  default     = null
-}
-
-variable "kms_key_deletion_window_in_days" {
-  description = "KMS Key deletion window"
-  default     = 30
-}
-
-variable "kms_key_enable_key_rotation" {
-  description = "KMS Key rotation flag"
-  default     = false
-}
-
-variable "kms_key_is_enabled" {
-  description = "KMS Key enabled flag"
+variable "api_auto_deploy" {
+  type        = bool
+  description = "Slack API auto deploy"
   default     = true
 }
 
-variable "kms_key_description" {
-  description = "KMS Key description"
-  default     = "Slackbot key"
+variable "api_description" {
+  type        = string
+  description = "Slack API description"
+  default     = "Slack API"
 }
 
-variable "kms_key_policy_document" {
-  description = "KMS Key policy JSON document"
-  default     = null
-}
-
-variable "kms_key_tags" {
-  description = "KMS Key resource tags"
+variable "api_log_format" {
   type        = map(string)
-  default     = {}
+  description = "Slack API log format"
+  default = {
+    httpMethod              = "$context.httpMethod"
+    integrationErrorMessage = "$context.integrationErrorMessage"
+    ip                      = "$context.identity.sourceIp"
+    path                    = "$context.path"
+    protocol                = "$context.protocol"
+    requestId               = "$context.requestId"
+    requestTime             = "$context.requestTime"
+    responseLength          = "$context.responseLength"
+    routeKey                = "$context.routeKey"
+    status                  = "$context.status"
+  }
 }
 
-variable "kms_key_usage" {
-  description = "KMS Key usage"
-  default     = "ENCRYPT_DECRYPT"
+variable "api_name" {
+  type        = string
+  description = "Slack API name"
 }
 
-variable "lambda_tags" {
-  description = "Lambda function resource tags"
+variable "api_stage_description" {
+  type        = string
+  description = "Slack API stage description"
+  default     = "Slack API stage"
+}
+
+####################
+#   CUSTOMIZATION  #
+####################
+
+variable "custom_responders" {
   type        = map(string)
+  description = "Optional route key => Lambda invocation ARN mappings"
   default     = {}
+
+  validation {
+    condition     = alltrue([for key, _ in var.custom_responders : startswith(key, "POST /-/")])
+    error_message = "Each key in custom_responders must start with \"POST /-/\""
+  }
 }
 
-variable "lambda_post_description" {
-  description = "Lambda function description"
-  default     = "Slack API handler"
+###########
+#   DNS   #
+###########
+
+variable "domain_certificate_arn" {
+  type        = string
+  description = "Slack API custom domain ACM certificate ARN"
 }
 
-variable "lambda_post_function_name" {
-  description = "Lambda function name prefix"
+variable "domain_name" {
+  type        = string
+  description = "Slack API custom domain"
 }
 
-variable "lambda_post_publish" {
-  description = "Lambda publish flag"
-  default     = false
-  type        = bool
+variable "domain_zone_id" {
+  type        = string
+  description = "Slack API Route53 hosted zone ID"
 }
 
-variable "lambda_post_memory_size" {
-  description = "Lambda function memory size"
-  default     = 1024
+#################
+#   EVENT BUS   #
+#################
+
+variable "event_bus_name" {
+  type        = string
+  description = "EventBridge bus name"
 }
 
-variable "lambda_post_runtime" {
-  description = "Lambda function runtime"
-  default     = "python3.9"
-}
-
-variable "lambda_post_timeout" {
-  description = "Lambda function timeout in seconds"
-  default     = 3
-}
-
-variable "lambda_proxy_description" {
-  description = "Lambda function description"
-  default     = "Slack request handler"
-}
-
-variable "lambda_proxy_function_name" {
-  description = "Lambda function name prefix"
-}
-
-variable "lambda_proxy_publish" {
-  description = "Lambda publish flag"
-  default     = false
-  type        = bool
-}
-
-variable "lambda_proxy_memory_size" {
-  description = "Lambda function memory size"
-  default     = 1024
-}
-
-variable "lambda_proxy_runtime" {
-  description = "Lambda function runtime"
-  default     = "python3.9"
-}
-
-variable "lambda_proxy_timeout" {
-  description = "Lambda function timeout in seconds"
-  default     = 3
-}
-
-variable "log_group_retention_in_days" {
-  description = "CloudWatch log group retention in days"
-  default     = null
-}
-
-variable "log_group_tags" {
-  description = "CloudWatch log group resource tags"
-  type        = map(string)
-  default     = {}
-}
-
-variable "log_json_indent" {
-  description = "Indent for JSON logger"
-  default     = null
-}
-
-variable "role_description" {
-  description = "Lambda role description"
-  default     = "Slackbot resource access"
-}
-
-variable "role_name" {
-  description = "Lambda role name"
-}
-
-variable "role_path" {
-  description = "Lambda role path"
-  default     = null
-}
-
-variable "role_tags" {
-  description = "Lambda role resource tags"
-  type        = map(string)
-  default     = {}
-}
+##############
+#   SECRET   #
+##############
 
 variable "secret_description" {
-  description = "SecretsManager Secret description"
+  type        = string
+  description = "SecretsManager secret description"
   default     = "Slackbot secrets"
 }
 
 variable "secret_name" {
+  type        = string
   description = "SecretsManager secret name"
 }
 
-variable "secret_tags" {
-  description = "SecretsManager Secret resource tags"
-  type        = map(string)
-  default     = {}
+#######################
+#   RECEIVER LAMBDA   #
+#######################
+
+variable "receiver_function_description" {
+  type        = string
+  description = "Slack HTTP receiver function description"
+  default     = "Slack HTTP receiver"
+}
+
+variable "receiver_function_memory_size" {
+  type        = number
+  description = "Slack HTTP receiver memory size in MB"
+  default     = 3008
+}
+
+variable "receiver_function_name" {
+  type        = string
+  description = "Slack HTTP receiver function name"
+}
+
+########################
+#   RESPONDER LAMBDA   #
+########################
+
+variable "responder_function_description" {
+  type        = string
+  description = "Slack HTTP responder function description"
+  default     = "Slack HTTP responder"
+}
+
+variable "responder_function_name" {
+  type        = string
+  description = "Slack HTTP responder function name"
+}
+
+variable "responder_function_memory_size" {
+  type        = number
+  description = "Slack HTTP receiver memory size in MB"
+  default     = 128
+}
+
+########################
+#   SLACK API LAMBDA   #
+########################
+
+variable "slack_api_function_description" {
+  type        = string
+  description = "Slack API function description"
+  default     = "Slack API"
+}
+
+variable "slack_api_function_memory_size" {
+  type        = number
+  description = "Slack HTTP receiver memory size in MB"
+  default     = 512
+}
+
+variable "slack_api_function_name" {
+  type        = string
+  description = "Slack API function name"
 }

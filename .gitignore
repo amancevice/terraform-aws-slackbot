@@ -9,8 +9,10 @@
 *.tfvars
 
 **/.terraform/
+**/__pycache__/
 *.env
 *.zip
 .terraform.lock.hcl
 .coverage
+.python-version
 coverage.xml

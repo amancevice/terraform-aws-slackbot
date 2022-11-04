@@ -1,29 +1,28 @@
-output "kms_key" {
-  description = "SecretsManager secret"
-  value       = aws_kms_key.key
+output "api" {
+  description = "API Gateway API"
+  value       = aws_apigatewayv2_api.api
 }
 
-output "kms_key_alias" {
-  description = "SecretsManager secret"
-  value       = aws_kms_alias.alias
+output "api_domain" {
+  description = "API Gateway custom domain"
+  value       = aws_apigatewayv2_domain_name.api
 }
 
-output "lambda_post" {
-  description = "Slack API helper Lambda"
-  value       = aws_lambda_function.post
+output "api_stage" {
+  description = "API Gateway stage"
+  value       = aws_apigatewayv2_stage.default
 }
 
-output "lambda_proxy" {
-  description = "API Gateway REST API proxy Lambda"
-  value       = aws_lambda_function.proxy
-}
-
-output "role" {
-  description = "Lambda function role"
-  value       = aws_iam_role.role
+output "functions" {
+  description = "Lambda functions"
+  value = {
+    receiver  = aws_lambda_function.receiver
+    responder = aws_lambda_function.responder
+    slack_api = aws_lambda_function.slack_api
+  }
 }
 
 output "secret" {
-  description = "SecretsManager secret"
+  description = "SecretsManager secret container"
   value       = aws_secretsmanager_secret.secret
 }

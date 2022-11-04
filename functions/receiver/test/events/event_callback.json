@@ -1,0 +1,22 @@
+{
+  "token": "<token>",
+  "team_id": "T01234ABCD",
+  "api_app_id": "A01234ABCD",
+  "event": {
+    "type": "app_home_opened",
+    "event_ts": "1649938812.633387"
+  },
+  "type": "event_callback",
+  "event_id": "<eventId>",
+  "event_time": 1649938812,
+  "authorizations": [
+    {
+      "enterprise_id": null,
+      "team_id": "T01234ABCD",
+      "user_id": "U01234ABCD",
+      "is_bot": true,
+      "is_enterprise_install": false
+    }
+  ],
+  "is_ext_shared_channel": false
+}
