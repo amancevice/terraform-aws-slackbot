@@ -1,0 +1,15 @@
+{
+  "token": "<token>",
+  "team_id": "T01234ABCD",
+  "team_domain": "my-domain",
+  "channel_id": "C01234ABCD",
+  "channel_name": "my-channel",
+  "user_id": "U01234ABCD",
+  "user_name": "jane",
+  "command": "/my-command",
+  "text": "some text",
+  "api_app_id": "A01234ABCD",
+  "is_enterprise_install": "false",
+  "response_url": "https://hooks.slack.com/commands/T01234ABCD/1234567890123/blahblahblah",
+  "trigger_id": "<trigger>.<id>.<value>"
+}

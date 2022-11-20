@@ -7,236 +7,182 @@
 
 A simple, serverless, asynchronous HTTP back end for your Slack app.
 
-> NOTE — v22.0.0 is a complete rewrite the module. See the [release notes](https://github.com/amancevice/terraform-aws-slackbot/releases/tag/22.0.0) for more info
+The application intentionally does very little: it will receive an event from Slack in the form of an HTTP request, verify its origin, publish the payload to EventBridge where it can be processed downstream using [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), and finally respond to Slack with an empty `200` OK response.
 
-The application intentionally does very little: it will receive an event from Slack in the form of an HTTP request, verify its origin, and then hand off the payload to EventBridge, where it can be processed downstream using [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html).
+Adding asynchronous features to your slackbot is as simple as adding the appropriate EventBridge rule/target, and some kind of handler function. See the section on [responding to events asynchronously](#responding-to-events-asynchronously) for details.
 
-Adding features to your slackbot is as simple as adding the appropriate EventBridge rule/target, and some kind of handler function. See the section on [processing events](#processing-events) for details.
+In some cases, you may want your Slack app to send a custom, synchronous, response to Slack instead of an empty `200` OK. External select menus and some callbacks, for example, need to respond to Slack with custom data and cannot be processed asyncronously. See the section on [responding to events synchronously](#responding-to-events-synchronously) for details.
+
+> NOTE — Previous versions of this module attempted to be as unopinionated as possible when creating Slackbots.
+>
+> `v24` takes a more "batteries included" appoach, creating:
+> - Regional HTTP API
+> - EventBridge event bus
+> - SecretsManager secret container
+> - Route53 record with regional latency routing configuration
+
+## Example Usage
+
+See the [example](./example) project for detailed usage.
+
+```terraform
+data "aws_acm_certificate" "cert" {
+  domain = "example.com"
+  types  = ["AMAZON_ISSUED"]
+}
+
+data "aws_route53_zone" "zone" {
+  name = "example.com."
+}
+
+module "slackbot" {
+  source = "./../.."
+
+  # API GATEWAY
+  api_name = "slackbot"
+
+  # DNS
+  domain_name            = "slack.example.com"
+  domain_certificate_arn = data.aws_acm_certificate.cert.arn
+  domain_zone_id         = data.aws_route53_zone.zone.id
+
+  # EVENT BUS
+  event_bus_name = "slackbot"
+
+  # LAMBDA
+  receiver_function_name  = "slackbot-receiver"
+  responder_function_name = "slackbot-responder"
+  slack_api_function_name = "slackbot-slack-api"
+
+  # SECRET
+  secret_name = "slackbot"
+
+  # CUSTOM RESPONDERS
+  custom_responders = {
+    "POST /-/callbacks"  = aws_lambda_function.custom_responders["callbacks"].arn
+    "POST /-/menus"      = aws_lambda_function.custom_responders["menus"].arn
+    "POST /-/slash/fizz" = aws_lambda_function.custom_responders["slash-fizz"].arn
+  }
+
+  # TAGS
+  tags = {
+    # …
+  }
+}
+```
 
 ## HTTP Routes
 
 Endpoints are provided for the following routes:
 
-- `GET /health` — a simple healthcheck to ensure your slackbot is up
-- `GET /install` — a helper to begin Slack's OAuth flow
-- `GET /oauth/v2` — completes Slack's [OAuth2](https://api.slack.com/docs/oauth) workflow (v2)
-- `POST /callbacks` — handle Slack's [interactive messages](https://api.slack.com/interactive-messages)
-- `POST /events` — handle events from Slack's [Events API](https://api.slack.com/events-api)
-- `POST /slash/{cmd}` — handle Slack's [slash commands](https://api.slack.com/slash-commands)
+| Route | Event Published? | Synchronous Support? | Purpose |
+|:----- | ----------------:| --------------------:|:------- |
+| `GET /health`       |  `No` |  `No` | Healthcheck to ensure your API is functional |
+| `GET /install`      |  `No` |  `No` | Helper to begin Slack's OAuth flow |
+| `GET /oauth`        | `Yes` |  `No` | Complete Slack's [OAuth2](https://api.slack.com/docs/oauth) workflow (v2) |
+| `POST /callbacks`   | `Yes` | `Yes` | Handle Slack's [interactive messages](https://api.slack.com/messaging/interactivity) |
+| `POST /events`      | `Yes` |  `No` | Handle events from Slack's [Events API](https://api.slack.com/events-api) |
+| `POST /menus`       | `Yes` | `Yes` | Handle [external select menus](https://api.slack.com/reference/block-kit/block-elements#external_select) |
+| `POST /slash/{cmd}` | `Yes` | `Yes` | Handle Slack's [slash commands](https://api.slack.com/slash-commands) |
 
-Payloads from `POST` requests are published to EventBridge, as are successful logins during the execution of the OAuth callback route, `GET /oauth/v2`.
+## Responding to Events Synchronously
 
-## Processing Events
+If you need to respond to Slack with a JSON payload (external select menus, for example), you will need to write an additional lambda function and attach it to the module via the `custom_responses` variable.
 
-EventBridge events are discoverable using [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html). Filter events using a bus name, source value, detail-type, or even parts of the event payload.
+The `custom_responses` variable should be a map of API Route Keys => Lambda ARNs. Route Keys _must_ start with `POST /-/` and should match their async counterparts.
 
-By default, the EventBridge bus name is `default` and the source is `slack`. Both these values are configurable in the module. The detail-type is derived from the endpoint and the detail is the payload itself.
-
-The following table shows the mapping of route-to-detail-type:
-
-| Route               | Detail Type |
-| :------------------ | :---------- |
-| `GET /oauth/v2`     | `oauth`     |
-| `POST /callbacks`   | `callback`  |
-| `POST /events`      | `event`     |
-| `POST /slash/{cmd}` | `slash`     |
-
-## Responding to Events
-
-In addition to handing events _from_ Slack, you can use EventBridge to send payloads _to_ Slack. Publish an event to EventBridge with the detail-type `api/<slack-api-method>`.
-
-For example, to send a message using the `chat.postMessage`, the following payload could be sent to the `PutEvents` method of the EventBridge API:
-
-```json
-{
-  "EventBusName": "<your-bus>",
-  "Source": "slack",
-  "DetailType": "api/chat.postMessage",
-  "Detail": "{\"text\":\"hello, world\"}"
-}
-```
-
-After executing the Slack API method, the response from Slack is itself published to EventBridge with the same detail-type value, prefixed with `result/`. In the example above, the result would be published to:
-
-```json
-{
-  "EventBusName": "<your-bus>",
-  "Source": "slack",
-  "DetailType": "result/api/chat.postMessage",
-  "Detail": "<slack-response-JSON>"
-}
-```
-
-## Terraform Usage
-
-Create an HTTP API
-
-```terraform
-resource "aws_apigatewayv2_api" "http_api" {
-  name          = "my-slack-api"
-  protocol_type = "HTTP"
-  # …
-}
-```
-
-(Optional) Create an event bus
-
-```terraform
-resource "aws_cloudwatch_event_bus" "slackbot" {
-  name = "slackbot"
-}
-```
-
-Add the `slackbot module`
+Example:
 
 ```terraform
 module "slackbot" {
-  source  = "amancevice/slackbot/aws"
-  version = "~> 23.2"
+  # …
 
-  # Required
-
-  http_api_execution_arn     = aws_apigatewayv2_api.http_api.execution_arn
-  http_api_id                = aws_apigatewayv2_api.http_api.id
-  lambda_post_function_name  = "slack-http-proxy"
-  lambda_proxy_function_name = "slack-api-post"
-  role_name                  = "my-role-name"
-  secret_name                = module.slackbot_secrets.secret.name
-
-  # Optional
-
-  event_bus_arn = aws_cloudwatch_event_bus.slackbot.arn
-  event_source  = "slackbot"
-
-  lambda_post_description = "My Slack post lambda description"
-  lambda_post_publish     = true | false
-  lambda_post_memory_size = 128
-  lambda_post_runtime     = "python3.9"
-  lambda_post_timeout     = 3
-
-  lambda_proxy_description = "My API proxy lambda description"
-  lambda_proxy_publish     = true | false
-  lambda_proxy_memory_size = 128
-  lambda_proxy_runtime     = "python3.9"
-  lambda_proxy_timeout     = 3
-
-  log_group_retention_in_days = 14
-
-  role_description = "My role description"
-  role_path        = "/"
-
-  lambda_tags    = { /* … */ }
-  log_group_tags = { /* … */ }
-  role_tags      = { /* … */ }
+  custom_responses = {
+    "POST /-/callbacks"  = "arn:aws:lambda:us-east-1:123456789012:function:my-sync-callbacks"
+    "POST /-/menus"      = "arn:aws:lambda:us-east-1:123456789012:function:my-sync-menus"
+    "POST /-/slash/fizz" = "arn:aws:lambda:us-east-1:123456789012:function:my-sync-slash-fizz"
+  }
 }
 ```
 
-Use the [`slackbot-secrets`](https://github.com/amancevice/terraform-aws-slackbot-secrets) module to add your Slack credentials
+Requests to synchronous endpoints are signed using [AWS Signature v4](https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html) and forwarded to the `/-/*` equivalent. By Default these requests are captured by the `POST /-/{proxy+}` route and respond with a `200` OK response. Adding your own custom responses override this behavior.
 
-> **WARNING** Be extremely cautious when using this module. **NEVER** store secrets in plaintext and encrypt your remote state. I recommend applying this module in a separate workspace without a remote backend.
+See the [example](./example) project for usage.
 
-```terraform
-module "slackbot_secrets" {
-  source  = "amancevice/slackbot-secrets/aws"
-  version = "~> 7.0"
+## Responding to Events Asynchronously
 
-  secret                   = module.slackbot.secret
-  slack_client_id          = "{slack_client_id}"
-  slack_client_secret      = "{slack_client_secret}"
-  slack_oauth_error_uri    = "{slack_oauth_error_uri}"
-  slack_oauth_redirect_uri = "{slack_oauth_redirect_uri}"
-  slack_oauth_success_uri  = "{slack_oauth_success_uri}"
-  slack_signing_secret     = "{slack_signing_secret}"
-  slack_signing_version    = "{slack_signing_version}"
-  slack_token              = "{slack_token}"
-}
-```
+EventBridge events are discoverable using [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html). Filter events using a bus name, source value, detail-type, or even parts of the event payload.
 
-## Example Event Patterns
+The following table shows the mapping of route-to-detail-type:
+
+| Route               | Event Bus         | Source             | Detail Type     |
+| :------------------ |:----------------- |:------------------ |:--------------- |
+| `GET /oauth`        | `<your-bus-name>` | `oauth`            | `install`       |
+| `POST /callbacks`   | `<your-bus-name>` | `<callback_type>`  | `<callback_id>` |
+| `POST /events`      | `<your-bus-name>` | `event_callback`   | `<event_type>`  |
+| `POST /menus`       | `<your-bus-name>` | `block_suggestion` | `<callback_id>` |
+| `POST /slash/{cmd}` | `<your-bus-name>` | `slash_command`    | `/<command>`    |
+
+### Example Event Patterns
 
 In order to process a given event you will need to create an EventBridge rule with a pattern that targets a specific event.
 
 The following examples show how a subscription might me made in Terraform:
 
-**Callback**
+#### Callbacks
 
 ```terraform
-resource "aws_cloudwatch_event_rule" "callback" {
+resource "aws_cloudwatch_event_rule" "block_actions" {
+  # …
   event_pattern = jsonencode({
-    source      = ["slack"]
-    detail-type = ["callback"]
+    source      = ["block_actions"]
+    detail-type = ["my_action_id"]
   })
 }
 ```
 
-**Event**
-
 ```terraform
-resource "aws_cloudwatch_event_rule" "event" {
+resource "aws_cloudwatch_event_rule" "view_submission" {
+  # …
   event_pattern = jsonencode({
-    source      = ["slack"]
-    detail-type = ["event"]
+    source      = ["view_submission"]
+    detail-type = ["my_callback_id"]
   })
 }
 ```
 
-**OAuth**
+#### Event
+
+```terraform
+resource "aws_cloudwatch_event_rule" "app_home_opened" {
+  # …
+  event_pattern = jsonencode({
+    source      = ["event_callback"]
+    detail-type = ["app_home_opened"]
+  })
+}
+```
+
+#### OAuth
 
 ```terraform
 resource "aws_cloudwatch_event_rule" "oauth" {
+  # …
   event_pattern = jsonencode({
-    source      = ["slack"]
-    detail-type = ["oauth"]
+    source      = ["oauth"]
+    detail-type = ["install"]
   })
 }
 ```
 
-**Slash Command**
+#### Slash Command
 
 ```terraform
 resource "aws_cloudwatch_event_rule" "slash" {
+  # …
   event_pattern = jsonencode({
-    source      = ["slack"]
-    detail-type = ["slash"]
+    source      = ["slash_comand"]
+    detail-type = ["/my-command"]
   })
-}
-```
-
-## Featured Add-Ons
-
-Some plugins are provided that can be hooked into the Slackbot out-of-the-box:
-
-**Slash Command**
-
-```terraform
-module "slackbot_slash_command" {
-  source  = "amancevice/slackbot-slash-command/aws"
-  version = "~> 19.0"
-
-  # Required
-
-  lambda_role_arn   = module.slackbot.role.arn
-  slack_secret_name = module.slackbot.secret.name
-  slack_topic_arn   = module.slackbot.topic.arn
-
-  lambda_function_name = "my-slash-command"
-  slack_slash_command  = "example"
-
-  slack_response = jsonencode({
-    response_type = "ephemeral | in_channel"
-    text          = ":sparkles: This will be the response"
-    blocks        = [ /* … */ ]
-  })
-
-  # Optional
-
-  lambda_description          = "Slackbot handler for /example"
-  lambda_memory_size          = 128
-  lambda_timeout              = 3
-  log_group_retention_in_days = 30
-  slack_response_type         = "direct | modal"
-
-  log_group_tags = { /* … */ }
-  lambda_tags    = { /* … */ }
 }
 ```
