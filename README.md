@@ -36,7 +36,8 @@ data "aws_route53_zone" "zone" {
 }
 
 module "slackbot" {
-  source = "./../.."
+  source  = "amancevice/slackbot/aws"
+  version = "~> 24.0"
 
   # API GATEWAY
   api_name = "slackbot"
