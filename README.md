@@ -59,9 +59,9 @@ module "slackbot" {
 
   # CUSTOM RESPONDERS
   custom_responders = {
-    "POST /-/callbacks"  = aws_lambda_function.custom_responders["callbacks"].arn
-    "POST /-/menus"      = aws_lambda_function.custom_responders["menus"].arn
-    "POST /-/slash/fizz" = aws_lambda_function.custom_responders["slash-fizz"].arn
+    "POST /-/callbacks"  = "arn:aws:lambda:us-east-1:123456789012:function:my-callbacks"
+    "POST /-/menus"      = "arn:aws:lambda:us-east-1:123456789012:function:my-menus"
+    "POST /-/slash/fizz" = "arn:aws:lambda:us-east-1:123456789012:function:my-slash-fizz"
   }
 
   # TAGS
