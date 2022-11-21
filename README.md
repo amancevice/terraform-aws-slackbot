@@ -71,6 +71,25 @@ module "slackbot" {
 }
 ```
 
+> NOTE — after applying this module you **must** update the SecretsManager secret with the slackbot configuration JSON (all values are optional except where indicated)
+>
+> Example JSON:
+>
+> ```json
+> {
+>   "SLACK_API_TOKEN": "xoxb-xxxx",
+>   "SLACK_OAUTH_CLIENT_ID": "xxxx",
+>   "SLACK_OAUTH_CLIENT_SECRET": "xxxx",
+>   "SLACK_OAUTH_SCOPE": "app_mentions:read chat:write",
+>   "SLACK_OAUTH_USER_SCOPE": "",
+>   "SLACK_OAUTH_ERROR_URI": "<oauth-error-URI>",
+>   "SLACK_OAUTH_REDIRECT_URI": "<oauth-redirect-URI>",
+>   "SLACK_OAUTH_SUCCESS_URI": "<oauth-success-URI>",
+>   "SLACK_SIGNING_SECRET": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // required
+>   "SLACK_SIGNING_VERSION": "v0"
+> }
+> ```
+
 ## HTTP Routes
 
 Endpoints are provided for the following routes:

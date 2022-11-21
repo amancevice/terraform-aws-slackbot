@@ -130,7 +130,6 @@ resource "aws_apigatewayv2_stage" "default" {
   }
 }
 
-
 ############################
 #   HTTP API :: RECEIVER   #
 ############################
