@@ -3,7 +3,7 @@
 ![arch](./docs/arch.png)
 
 [![terraform](https://img.shields.io/github/v/tag/amancevice/terraform-aws-slackbot?color=62f&label=version&logo=terraform&style=flat-square)](https://registry.terraform.io/modules/amancevice/slackbot/aws)
-[![build](https://img.shields.io/github/workflow/status/amancevice/terraform-aws-slackbot/validate?logo=github&style=flat-square)](https://github.com/amancevice/terraform-aws-slackbot/actions)
+[![build](https://img.shields.io/github/actions/workflow/status/amancevice/terraform-aws-slackbot/test-validate.yml?logo=github&style=flat-square)](https://github.com/amancevice/terraform-aws-slackbot/actions/workflows/test-validate.yml)
 
 A simple, serverless, asynchronous HTTP back end for your Slack app.
 
