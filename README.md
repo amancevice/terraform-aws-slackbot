@@ -5,6 +5,8 @@
 [![terraform](https://img.shields.io/github/v/tag/amancevice/terraform-aws-slackbot?color=62f&label=version&logo=terraform&style=flat-square)](https://registry.terraform.io/modules/amancevice/slackbot/aws)
 [![build](https://img.shields.io/github/actions/workflow/status/amancevice/terraform-aws-slackbot/test-validate.yml?logo=github&style=flat-square)](https://github.com/amancevice/terraform-aws-slackbot/actions/workflows/test-validate.yml)
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/smallweirdnumber)
+
 A simple, serverless, asynchronous HTTP back end for your Slack app.
 
 The application intentionally does very little: it will receive an event from Slack in the form of an HTTP request, verify its origin, publish the payload to EventBridge where it can be processed downstream using [event patterns](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html), and finally respond to Slack with an empty `200` OK response.
@@ -16,6 +18,7 @@ In some cases, you may want your Slack app to send a custom, synchronous, respon
 > NOTE — Previous versions of this module attempted to be as unopinionated as possible when creating Slackbots.
 >
 > `v24` takes a more "batteries included" appoach, creating:
+>
 > - Regional HTTP API
 > - EventBridge event bus
 > - SecretsManager secret container
