@@ -2,6 +2,12 @@
 #   GENERAL   #
 ###############
 
+variable "function_runtime" {
+  type        = string
+  description = "Lambda function runtime"
+  default     = "python3.10"
+}
+
 variable "log_retention_in_days" {
   type        = number
   description = "Slackbot log retention in days"

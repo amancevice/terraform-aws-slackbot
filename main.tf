@@ -13,7 +13,7 @@ terraform {
 
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 4.64"
     }
   }
 }
@@ -29,8 +29,6 @@ data "aws_region" "current" {}
 ##############
 
 locals {
-  lambda_runtime = "python3.9"
-
   receiver_routes = [
     "ANY /health",
     "ANY /install",
@@ -277,7 +275,7 @@ resource "aws_lambda_function" "receiver" {
   handler          = "index.handler"
   memory_size      = var.receiver_function_memory_size
   role             = aws_iam_role.receiver.arn
-  runtime          = "python3.9"
+  runtime          = var.function_runtime
   source_code_hash = data.archive_file.packages["receiver"].output_base64sha256
   tags             = var.tags
   timeout          = 3
@@ -337,7 +335,7 @@ resource "aws_lambda_function" "responder" {
   handler          = "index.handler"
   memory_size      = var.responder_function_memory_size
   role             = aws_iam_role.responder.arn
-  runtime          = "python3.9"
+  runtime          = var.function_runtime
   source_code_hash = data.archive_file.packages["responder"].output_base64sha256
   tags             = var.tags
   timeout          = 3
@@ -397,7 +395,7 @@ resource "aws_lambda_function" "slack_api" {
   handler          = "index.handler"
   memory_size      = var.slack_api_function_memory_size
   role             = aws_iam_role.slack_api.arn
-  runtime          = "python3.9"
+  runtime          = var.function_runtime
   source_code_hash = data.archive_file.packages["slack-api"].output_base64sha256
   tags             = var.tags
   timeout          = 3

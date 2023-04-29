@@ -136,7 +136,7 @@ resource "aws_lambda_function" "custom_responders" {
   handler          = "index.handler"
   memory_size      = 128
   role             = aws_iam_role.custom_responders[each.value].arn
-  runtime          = "python3.9"
+  runtime          = "python3.10"
   source_code_hash = data.archive_file.custom_responders[each.value].output_base64sha256
   timeout          = 3
 }
