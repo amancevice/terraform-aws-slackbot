@@ -29,6 +29,12 @@ data "aws_region" "current" {}
 ##############
 
 locals {
+  region = data.aws_region.current.name
+
+  receiver_function_role_name  = coalesce(var.receiver_function_role_name, "${var.receiver_function_name}-${local.region}")
+  responder_function_role_name = coalesce(var.responder_function_role_name, "${var.responder_function_name}-${local.region}")
+  slack_api_function_role_name = coalesce(var.slack_api_function_role_name, "${var.slack_api_function_name}-${local.region}")
+
   receiver_routes = [
     "ANY /health",
     "ANY /install",
@@ -69,7 +75,7 @@ resource "aws_secretsmanager_secret" "secret" {
 
 resource "aws_route53_record" "api" {
   name           = aws_apigatewayv2_domain_name.api.domain_name
-  set_identifier = data.aws_region.current.name
+  set_identifier = local.region
   type           = "A"
   zone_id        = var.domain_zone_id
 
@@ -80,7 +86,7 @@ resource "aws_route53_record" "api" {
   }
 
   latency_routing_policy {
-    region = data.aws_region.current.name
+    region = local.region
   }
 }
 
@@ -221,7 +227,7 @@ data "archive_file" "packages" {
 ################################
 
 resource "aws_iam_role" "receiver" {
-  name = "${var.receiver_function_name}-${data.aws_region.current.name}"
+  name = local.receiver_function_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -301,7 +307,7 @@ resource "aws_lambda_permission" "receiver" {
 #################################
 
 resource "aws_iam_role" "responder" {
-  name = "${var.responder_function_name}-${data.aws_region.current.name}"
+  name = local.responder_function_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -354,7 +360,7 @@ resource "aws_lambda_permission" "responder" {
 ##########################
 
 resource "aws_iam_role" "slack_api" {
-  name = "${var.slack_api_function_name}-${data.aws_region.current.name}"
+  name = local.slack_api_function_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

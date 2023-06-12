@@ -18,9 +18,17 @@ terraform {
   }
 }
 
-##################
-#   AWS REGION   #
-##################
+##############
+#   LOCALS   #
+##############
+
+locals {
+  region = data.aws_region.current.name
+}
+
+############
+#   DATA   #
+############
 
 data "aws_region" "current" {}
 
@@ -69,6 +77,11 @@ module "slackbot" {
   responder_function_name = "slackbot-responder"
   slack_api_function_name = "slackbot-slack-api"
 
+  # IAM
+  receiver_function_role_name  = "${local.region}-slackbot-receiver"
+  responder_function_role_name = "${local.region}-slackbot-responder"
+  slack_api_function_role_name = "${local.region}-slackbot-slack-api"
+
   # SECRET
   secret_name = "slackbot"
 
@@ -80,7 +93,7 @@ module "slackbot" {
   }
 
   # TAGS
-  tags = { Region = data.aws_region.current.name }
+  tags = { Region = local.region }
 }
 
 #########################
@@ -101,7 +114,7 @@ data "archive_file" "custom_responders" {
 resource "aws_iam_role" "custom_responders" {
   for_each = local.custom_responders
 
-  name = "slackbot-${each.value}-${data.aws_region.current.name}"
+  name = "${local.region}-slackbot-${each.value}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -153,7 +166,7 @@ resource "aws_cloudwatch_log_group" "custom_responders" {
 
 resource "aws_iam_role" "app_home_opened_events" {
   description = "Slackbot app home opened events"
-  name        = "slackbot-app-home-opened-events-${data.aws_region.current.name}"
+  name        = "${local.region}-slackbot-app-home-opened-events"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -181,7 +194,7 @@ resource "aws_iam_role" "app_home_opened_events" {
 
 resource "aws_iam_role" "app_home_opened_states" {
   description = "Slackbot app home opened states"
-  name        = "slackbot-app-home-opened-states-${data.aws_region.current.name}"
+  name        = "${local.region}-slackbot-app-home-opened-states"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -288,7 +301,7 @@ resource "aws_sfn_state_machine" "app_home_opened" {
 
 resource "aws_iam_role" "open_modal_events" {
   description = "Slackbot open modal events"
-  name        = "slackbot-open-modal-events-${data.aws_region.current.name}"
+  name        = "${local.region}-slackbot-open-modal-events"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -316,7 +329,7 @@ resource "aws_iam_role" "open_modal_events" {
 
 resource "aws_iam_role" "open_modal_states" {
   description = "Slackbot open modal states"
-  name        = "slackbot-open-modal-states-${data.aws_region.current.name}"
+  name        = "${local.region}-slackbot-open-modal-states"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

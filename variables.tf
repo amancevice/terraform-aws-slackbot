@@ -143,6 +143,12 @@ variable "receiver_function_name" {
   description = "Slack HTTP receiver function name"
 }
 
+variable "receiver_function_role_name" {
+  type        = string
+  description = "Slack HTTP receiver function role name"
+  default     = null
+}
+
 ########################
 #   RESPONDER LAMBDA   #
 ########################
@@ -153,15 +159,21 @@ variable "responder_function_description" {
   default     = "Slack HTTP responder"
 }
 
+variable "responder_function_memory_size" {
+  type        = number
+  description = "Slack HTTP receiver memory size in MB"
+  default     = 128
+}
+
 variable "responder_function_name" {
   type        = string
   description = "Slack HTTP responder function name"
 }
 
-variable "responder_function_memory_size" {
-  type        = number
-  description = "Slack HTTP receiver memory size in MB"
-  default     = 128
+variable "responder_function_role_name" {
+  type        = string
+  description = "Slack HTTP responder function role name"
+  default     = null
 }
 
 ########################
@@ -183,4 +195,10 @@ variable "slack_api_function_memory_size" {
 variable "slack_api_function_name" {
   type        = string
   description = "Slack API function name"
+}
+
+variable "slack_api_function_role_name" {
+  type        = string
+  description = "Slack API function role name"
+  default     = null
 }
