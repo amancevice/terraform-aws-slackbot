@@ -5,7 +5,7 @@
 variable "function_runtime" {
   type        = string
   description = "Lambda function runtime"
-  default     = "python3.10"
+  default     = "python3.11"
 }
 
 variable "log_retention_in_days" {
