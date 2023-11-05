@@ -13,7 +13,7 @@ logs:
 apply: | .terraform
 	terraform apply
 
-.PHONY: logs validate apply
+.PHONY: logs validate apply curl
 
 .terraform:
 	terraform init

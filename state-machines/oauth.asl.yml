@@ -1,0 +1,97 @@
+---
+StartAt: GetState
+States:
+  GetState:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:sfn:describeExecution
+    Next: VerifyState
+    ResultPath: $.verification
+    ResultSelector:
+      status.$: $.Status
+    Parameters:
+      ExecutionArn.$: >-
+        States.Format(
+        'arn:aws:states:${region}:${account}:execution:${name}-state:{}',
+        $.state)
+  VerifyState:
+    Type: Choice
+    Default: GetErrorUriForInvalidState
+    Choices:
+      - Next: CompleteOAuth
+        Variable: $.verification.status
+        StringEquals: RUNNING
+  GetErrorUriForInvalidState:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:ssm:getParameter
+    End: true
+    ResultSelector:
+      statusCode: 302
+      headers:
+        location.$: $.Parameter.Value
+    Parameters:
+      Name: ${error_uri_parameter}
+    Catch:
+      - Next: Forbidden
+        ErrorEquals:
+          - States.ALL
+  Forbidden:
+    Type: Fail
+  CompleteOAuth:
+    Type: Task
+    Resource: ${oauth_function_arn}
+    Next: OK?
+    Parameters:
+      code.$: $.code
+      redirect_uri: ${redirect_uri}
+  OK?:
+    Type: Choice
+    Default: PublishEvent
+    Choices:
+      - Next: GetErrorUriForOAuthError
+        Variable: $.ok
+        BooleanEquals: false
+  GetErrorUriForOAuthError:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:ssm:getParameter
+    End: true
+    ResultSelector:
+      statusCode: 302
+      headers:
+        location.$: $.Parameter.Value
+    Parameters:
+      Name: ${error_uri_parameter}
+    Catch:
+      - Next: Forbidden
+        ErrorEquals:
+          - States.ALL
+  PublishEvent:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+    Next: GetSuccessUri
+    Parameters:
+      Entries:
+        - EventBusName: ${event_bus_name}
+          Source: ${domain_name}
+          DetailType: ${detail_type}
+          Detail.$: $
+  GetSuccessUri:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:ssm:getParameter
+    End: true
+    ResultSelector:
+      statusCode: 302
+      headers:
+        location.$: $.Parameter.Value
+    Parameters:
+      Name: ${success_uri_parameter}
+    Catch:
+      - Next: DefaultSuccessUri
+        ErrorEquals:
+          - States.ALL
+  DefaultSuccessUri:
+    Type: Pass
+    End: true
+    Result:
+      statusCode: 302
+      headers:
+        location: slack://open

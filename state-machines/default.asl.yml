@@ -1,0 +1,59 @@
+---
+StartAt: AuthorizeAndTransform
+States:
+  AuthorizeAndTransform:
+    Type: Parallel
+    Next: PublishEventAndRespond
+    OutputPath: $[1]
+    Branches:
+      - StartAt: Authorize
+        States:
+          Authorize:
+            Type: Pass
+            # Type: Task
+            # Resource: ${http_authorizer_function_arn}
+            End: true
+      - StartAt: Transform
+        States:
+          Transform:
+            Type: Task
+            Resource: ${http_transformer_function_arn}
+            End: true
+  PublishEventAndRespond:
+    Type: Parallel
+    End: true
+    OutputPath: $[1]
+    Branches:
+      - StartAt: PublishEvent
+        States:
+          PublishEvent:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+            End: true
+            Parameters:
+              Entries:
+                - EventBusName: ${event_bus_name}
+                  Source: ${domain_name}
+                  DetailType: ${detail_type}
+                  Detail.$: $
+      - StartAt: Respond
+        States:
+          Respond:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:lambda:invoke
+            End: true
+            OutputPath: $.Payload
+            ResultSelector:
+              Payload.$: States.StringToJson($.Payload)
+            Parameters:
+              FunctionName.$: States.Format('${name}-{}', $.type)
+              Payload.$: States.JsonToString($)
+            Catch:
+              - Next: Default
+                ErrorEquals:
+                  - Lambda.ResourceNotFoundException
+          Default:
+            Type: Pass
+            End: true
+            Parameters:
+              statusCode: 200

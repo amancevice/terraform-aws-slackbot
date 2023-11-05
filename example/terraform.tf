@@ -28,24 +28,8 @@ provider "aws" {
 #   VARIABLES   #
 #################
 
-variable "domain" {
-  type = string
-}
-
-variable "secret" {
-  type = object({
-    SLACK_API_TOKEN           = string
-    SLACK_OAUTH_CLIENT_ID     = string
-    SLACK_OAUTH_CLIENT_SECRET = string
-    SLACK_OAUTH_SCOPE         = string
-    SLACK_OAUTH_USER_SCOPE    = string
-    SLACK_OAUTH_ERROR_URI     = string
-    SLACK_OAUTH_REDIRECT_URI  = string
-    SLACK_OAUTH_SUCCESS_URI   = string
-    SLACK_SIGNING_SECRET      = string
-    SLACK_SIGNING_VERSION     = string
-  })
-}
+variable "domain" { type = string }
+variable "parameters" { type = map(string) }
 
 ###############
 #   REGIONS   #
@@ -59,10 +43,10 @@ variable "secret" {
 # }
 
 module "us-east-1" {
-  providers = { aws = aws.us-east-1 }
-  source    = "./region"
-  domain    = var.domain
-  secret    = var.secret
+  providers  = { aws = aws.us-east-1 }
+  source     = "./region"
+  domain     = var.domain
+  parameters = var.parameters
 }
 
 # module "us-west-2" {
