@@ -1,0 +1,59 @@
+---
+StartAt: AuthorizeAndTransform
+States:
+  AuthorizeAndTransform:
+    Type: Parallel
+    Next: Challenge?
+    OutputPath: $[1]
+    Branches:
+      - StartAt: Authorize
+        States:
+          Authorize:
+            Type: Pass
+            # Type: Task
+            # Resource: ${http_authorizer_function_arn}
+            End: true
+            Parameters:
+              signature.$: $.signature
+              ts.$: $.ts
+              body.$: $.body
+      - StartAt: Transform
+        States:
+          Transform:
+            Type: Task
+            Resource: ${http_transformer_function_arn}
+            End: true
+            Parameters:
+              routeKey.$: $.routeKey
+              body.$: $.body
+  Challenge?:
+    Type: Choice
+    Default: PublishEvent
+    Choices:
+      - Next: Respond
+        And:
+          - Variable: $.challenge
+            IsPresent: true
+          - Variable: $.type
+            IsPresent: true
+          - Variable: $.type
+            StringEquals: url_verification
+  PublishEvent:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+    End: true
+    ResultSelector:
+      statusCode: 200
+    Parameters:
+      Entries:
+        - EventBusName: ${event_bus_name}
+          Source: ${domain_name}
+          DetailType: ${detail_type}
+          Detail.$: $
+  Respond:
+    Type: Pass
+    End: true
+    Parameters:
+      statusCode: 200
+      body:
+        challenge.$: $.challenge

@@ -8,7 +8,7 @@ terraform {
   required_providers {
     archive = {
       source  = "hashicorp/archive"
-      version = "~> 2.0"
+      version = "~> 2.3"
     }
 
     aws = {
@@ -27,12 +27,8 @@ locals {
   region = data.aws_region.current.name
 
   parameters = {
-    for k, v in var.parameters : k => {
-      name  = "/${local.name}/${k}"
-      value = v
-      type  = k == "token" || endswith(k, "_secret") ? "SecureString" : "String"
-    }
-    if v != ""
+    client_secret  = { key : "/${local.name}/client_secret", value : var.slack_client_secret }
+    signing_secret = { key : "/${local.name}/signing_secret", value : var.slack_signing_secret }
   }
 }
 
@@ -58,9 +54,9 @@ data "aws_route53_zone" "zone" {
 
 resource "aws_ssm_parameter" "parameters" {
   for_each = local.parameters
-  name     = each.value.name
+  name     = each.value.key
   value    = each.value.value
-  type     = each.value.type
+  type     = "SecureString"
 }
 
 ################
@@ -78,9 +74,14 @@ module "slackbot" {
   domain_certificate_arn = data.aws_acm_certificate.cert.arn
   domain_zone_id         = data.aws_route53_zone.zone.id
 
-  # PARAMETERS
-  parameters = { for k, v in local.parameters : k => v.name }
-
+  # SLACK
+  slack_client_id                = var.slack_client_id
+  slack_client_secret_parameter  = local.parameters.client_secret.key
+  slack_error_uri                = var.slack_error_uri
+  slack_scope                    = var.slack_scope
+  slack_signing_secret_parameter = local.parameters.signing_secret.key
+  slack_success_uri              = var.slack_success_uri
+  slack_user_scope               = var.slack_user_scope
   # TAGS
   tags = { Region = local.region }
 }

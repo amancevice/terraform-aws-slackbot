@@ -33,6 +33,8 @@ locals {
   account = data.aws_caller_identity.current.account_id
   region  = data.aws_region.current.name
 
+  redirect_uri = "https://${var.domain_name}/oauth"
+
   lambda_runtime  = "python3.11"
   lambda_handlers = fileset(path.module, "functions/*/src/index.py")
   lambda_packages = {
@@ -62,7 +64,7 @@ locals {
       routeKey  = "$context.httpMethod $context.resourcePath"
       signature = "$input.params('x-slack-signature')"
       ts        = "$input.params('x-slack-request-timestamp')"
-      body      = "$input.body"
+      body      = "$util.escapeJavaScript($util.escapeJavaScript($input.body))"
     }
     install = {
       routeKey = "$context.httpMethod $context.resourcePath"
@@ -101,7 +103,7 @@ locals {
       http_method            = "POST"
       request_parameters     = local.request_parameters.default
       request_template       = local.request_templates.default
-      state_machine_template = "default"
+      state_machine_template = "event"
     }
     "POST /menu" = {
       resource               = "menu"
@@ -446,7 +448,7 @@ resource "aws_iam_role" "http_authorizer" {
         Sid      = "GetParameter"
         Effect   = "Allow"
         Action   = "ssm:GetParameter"
-        Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter${var.parameters.signing_secret}"
+        Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter${var.slack_signing_secret_parameter}"
       }]
     })
   }
@@ -458,7 +460,7 @@ resource "aws_lambda_function" "http_authorizer" {
   filename         = data.archive_file.packages["http-authorizer"].output_path
   function_name    = "${var.name}-http-authorizer"
   handler          = "index.handler"
-  memory_size      = var.authorizer_function_memory_size
+  memory_size      = 1024
   role             = aws_iam_role.http_authorizer.arn
   runtime          = local.lambda_runtime
   source_code_hash = data.archive_file.packages["http-authorizer"].output_base64sha256
@@ -467,7 +469,7 @@ resource "aws_lambda_function" "http_authorizer" {
 
   environment {
     variables = {
-      SIGNING_SECRET_PARAMETER = var.parameters.signing_secret
+      SIGNING_SECRET_PARAMETER = var.slack_signing_secret_parameter
     }
   }
 }
@@ -515,7 +517,7 @@ resource "aws_lambda_function" "http_transformer" {
   filename         = data.archive_file.packages["http-transformer"].output_path
   function_name    = "${var.name}-http-transformer"
   handler          = "index.handler"
-  memory_size      = var.transformer_function_memory_size
+  memory_size      = 1024
   role             = aws_iam_role.http_transformer.arn
   runtime          = local.lambda_runtime
   source_code_hash = data.archive_file.packages["http-transformer"].output_base64sha256
@@ -564,13 +566,10 @@ resource "aws_iam_role" "oauth" {
     policy = jsonencode({
       Version = "2012-10-17"
       Statement = [{
-        Sid    = "GetParameter"
-        Effect = "Allow"
-        Action = "ssm:GetParameter"
-        Resource = [
-          "arn:aws:ssm:${local.region}:${local.account}:parameter${var.parameters.client_id}",
-          "arn:aws:ssm:${local.region}:${local.account}:parameter${var.parameters.client_secret}",
-        ]
+        Sid      = "GetParameter"
+        Effect   = "Allow"
+        Action   = "ssm:GetParameter"
+        Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter${var.slack_client_secret_parameter}"
       }]
     })
   }
@@ -582,7 +581,7 @@ resource "aws_lambda_function" "oauth" {
   filename         = data.archive_file.packages["oauth"].output_path
   function_name    = "${var.name}-oauth"
   handler          = "index.handler"
-  memory_size      = var.oauth_function_memory_size
+  memory_size      = 256
   role             = aws_iam_role.oauth.arn
   runtime          = local.lambda_runtime
   source_code_hash = data.archive_file.packages["oauth"].output_base64sha256
@@ -591,8 +590,8 @@ resource "aws_lambda_function" "oauth" {
 
   environment {
     variables = {
-      CLIENT_ID_PARAMETER     = var.parameters.client_id
-      CLIENT_SECRET_PARAMETER = var.parameters.client_secret
+      CLIENT_ID               = var.slack_client_id
+      CLIENT_SECRET_PARAMETER = var.slack_client_secret_parameter
     }
   }
 }
@@ -664,22 +663,6 @@ resource "aws_iam_role" "states" {
   }
 
   inline_policy {
-    name = "ssm"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Effect = "Allow"
-        Action = "ssm:GetParameter"
-        Resource = [
-          for _, name in var.parameters :
-          "arn:aws:ssm:${local.region}:${local.account}:parameter${name}"
-          if name != null
-        ]
-      }]
-    })
-  }
-
-  inline_policy {
     name = "states"
     policy = jsonencode({
       Version = "2012-10-17"
@@ -712,23 +695,24 @@ resource "aws_sfn_state_machine" "states" {
   role_arn = aws_iam_role.states.arn
 
   definition = jsonencode(yamldecode(templatefile(each.value.template, {
-    account                       = local.account
-    client_id_parameter           = var.parameters.client_id == null ? "" : var.parameters.client_id
-    client_secret_parameter       = var.parameters.client_secret == null ? "" : var.parameters.client_secret
-    detail_type                   = each.key
-    domain_name                   = var.domain_name
-    error_uri_parameter           = var.parameters.error_uri == null ? "" : var.parameters.error_uri
+    account            = local.account
+    region             = local.region
+    slack_redirect_uri = local.redirect_uri
+
     event_bus_name                = aws_cloudwatch_event_bus.bus.name
     http_authorizer_function_arn  = aws_lambda_function.http_authorizer.arn
     http_transformer_function_arn = aws_lambda_function.http_transformer.arn
-    name                          = var.name
     oauth_function_arn            = aws_lambda_function.oauth.arn
-    redirect_uri                  = "https://slack.beachplum.io/oauth"
-    region                        = local.region
-    scope_parameter               = var.parameters.scope == null ? "" : var.parameters.scope
-    signing_secret_parameter      = var.parameters.signing_secret == null ? "" : var.parameters.signing_secret
-    success_uri_parameter         = var.parameters.success_uri == null ? "" : var.parameters.success_uri
-    user_scope_parameter          = var.parameters.user_scope == null ? "" : var.parameters.user_scope
+
+    detail_type = each.key
+
+    name              = var.name
+    domain_name       = var.domain_name
+    slack_client_id   = var.slack_client_id
+    slack_error_uri   = var.slack_error_uri
+    slack_scope       = var.slack_scope
+    slack_success_uri = var.slack_success_uri
+    slack_user_scope  = var.slack_user_scope
   })))
 
   logging_configuration {

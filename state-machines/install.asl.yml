@@ -1,69 +1,19 @@
 ---
-StartAt: GetRedirect
+StartAt: GetState
 States:
-  GetRedirect:
-    Type: Parallel
-    End: true
+  GetState:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:sfn:startExecution
+    Next: Redirect
+    OutputPath: $.ArnParts[7]
     ResultSelector:
+      ArnParts.$: States.StringSplit($.ExecutionArn, ':')
+    Parameters:
+      StateMachineArn: arn:aws:states:${region}:${account}:stateMachine:${name}-state
+  Redirect:
+    Type: Pass
+    End: true
+    Parameters:
       statusCode: 302
       headers:
-        location.$: >-
-          States.Format(
-          'https://slack.com/oauth/v2/authorize?client_id={}&scope={}&user_scope={}&state={}&redirect_uri=${redirect_uri}',
-          $[0], $[1], $[2], $[3]
-          )
-    Branches:
-      - StartAt: GetClientId
-        States:
-          GetClientId:
-            Type: Task
-            Resource: arn:aws:states:::aws-sdk:ssm:getParameter
-            End: true
-            OutputPath: $.Parameter.Value
-            Parameters:
-              Name: ${client_id_parameter}
-      - StartAt: GetScope
-        States:
-          GetScope:
-            Type: Task
-            Resource: arn:aws:states:::aws-sdk:ssm:getParameter
-            End: true
-            OutputPath: $.Parameter.Value
-            Parameters:
-              Name: ${scope_parameter}
-            Catch:
-              - Next: DefaultScope
-                ErrorEquals:
-                  - States.ALL
-          DefaultScope:
-            Type: Pass
-            End: true
-            Result: ""
-      - StartAt: GetUserScope
-        States:
-          GetUserScope:
-            Type: Task
-            Resource: arn:aws:states:::aws-sdk:ssm:getParameter
-            End: true
-            OutputPath: $.Parameter.Value
-            Parameters:
-              Name: ${user_scope_parameter}
-            Catch:
-              - Next: DefaultUserScope
-                ErrorEquals:
-                  - States.ALL
-          DefaultUserScope:
-            Type: Pass
-            End: true
-            Result: ""
-      - StartAt: GetState
-        States:
-          GetState:
-            Type: Task
-            Resource: arn:aws:states:::aws-sdk:sfn:startExecution
-            End: true
-            OutputPath: $.ArnParts[7]
-            ResultSelector:
-              ArnParts.$: States.StringSplit($.ExecutionArn, ':')
-            Parameters:
-              StateMachineArn: arn:aws:states:${region}:${account}:stateMachine:${name}-state
+        location.$: States.Format('https://slack.com/oauth/v2/authorize?client_id=${slack_client_id}&scope=${slack_scope}&user_scope=${slack_user_scope}&redirect_uri=${slack_redirect_uri}&state={}', $)

@@ -13,12 +13,19 @@ States:
             # Type: Task
             # Resource: ${http_authorizer_function_arn}
             End: true
+            Parameters:
+              signature.$: $.signature
+              ts.$: $.ts
+              body.$: $.body
       - StartAt: Transform
         States:
           Transform:
             Type: Task
             Resource: ${http_transformer_function_arn}
             End: true
+            Parameters:
+              routeKey.$: $.routeKey
+              body.$: $.body
   PublishEventAndRespond:
     Type: Parallel
     End: true

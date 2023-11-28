@@ -13,21 +13,6 @@ variable "log_retention_in_days" {
   default     = 14
 }
 
-variable "parameters" {
-  description = "Slackbot SSM ParameterStore parameter names"
-  type = object({
-    signing_secret = string
-    client_id      = optional(string)
-    client_secret  = optional(string)
-    error_uri      = optional(string)
-    redirect_uri   = optional(string)
-    scope          = optional(string)
-    success_uri    = optional(string)
-    token          = optional(string)
-    user_scope     = optional(string)
-  })
-}
-
 variable "tags" {
   type        = map(string)
   description = "Slackbot tags"
@@ -48,16 +33,18 @@ variable "api_log_format" {
   type        = map(string)
   description = "Slack API log format"
   default = {
-    httpMethod              = "$context.httpMethod"
-    integrationErrorMessage = "$context.integrationErrorMessage"
-    ip                      = "$context.identity.sourceIp"
-    path                    = "$context.path"
-    protocol                = "$context.protocol"
-    requestId               = "$context.requestId"
-    requestTime             = "$context.requestTime"
-    responseLength          = "$context.responseLength"
-    routeKey                = "$context.routeKey"
-    status                  = "$context.status"
+    caller            = "$context.identity.caller"
+    extendedRequestId = "$context.extendedRequestId"
+    httpMethod        = "$context.httpMethod"
+    ip                = "$context.identity.sourceIp"
+    integrationError  = "$context.integration.error"
+    protocol          = "$context.protocol"
+    requestId         = "$context.requestId"
+    requestTime       = "$context.requestTime"
+    resourcePath      = "$context.resourcePath"
+    responseLength    = "$context.responseLength"
+    status            = "$context.status"
+    user              = "$context.identity.user"
   }
 }
 
@@ -80,24 +67,45 @@ variable "domain_zone_id" {
   description = "Slack API Route53 hosted zone ID"
 }
 
-#########################
-#   AUTHORIZER LAMBDA   #
-#########################
+#############
+#   SLACK   #
+#############
 
-variable "authorizer_function_memory_size" {
-  type        = number
-  description = "Slack HTTP event authorizer memory size in MB"
-  default     = 1024
+variable "slack_signing_secret_parameter" {
+  description = "Slackbot signing secret SSM parameter name"
+  type        = string
 }
 
-variable "transformer_function_memory_size" {
-  type        = number
-  description = "Slack HTTP event transformer memory size in MB"
-  default     = 1024
+variable "slack_client_id" {
+  description = "Slackbot OAuth client ID"
+  type        = string
 }
 
-variable "oauth_function_memory_size" {
-  type        = number
-  description = "Slack OAuth memory size in MB"
-  default     = 512
+variable "slack_client_secret_parameter" {
+  description = "Slackbot OAuth client secret SSM parameter name"
+  type        = string
+}
+
+variable "slack_error_uri" {
+  description = "Slackbot OAuth error URI"
+  type        = string
+  default     = null
+}
+
+variable "slack_scope" {
+  description = "Slackbot OAuth scopes"
+  type        = string
+  default     = null
+}
+
+variable "slack_success_uri" {
+  description = "Slackbot OAuth success URI"
+  type        = string
+  default     = "slack://open"
+}
+
+variable "slack_user_scope" {
+  description = "Slackbot OAuth user scopes"
+  type        = string
+  default     = null
 }

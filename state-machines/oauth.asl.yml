@@ -4,7 +4,7 @@ States:
   GetState:
     Type: Task
     Resource: arn:aws:states:::aws-sdk:sfn:describeExecution
-    Next: VerifyState
+    Next: ValidState?
     ResultPath: $.verification
     ResultSelector:
       status.$: $.Status
@@ -13,85 +13,52 @@ States:
         States.Format(
         'arn:aws:states:${region}:${account}:execution:${name}-state:{}',
         $.state)
-  VerifyState:
+  ValidState?:
     Type: Choice
-    Default: GetErrorUriForInvalidState
+    Default: InvalidState
     Choices:
       - Next: CompleteOAuth
         Variable: $.verification.status
         StringEquals: RUNNING
-  GetErrorUriForInvalidState:
-    Type: Task
-    Resource: arn:aws:states:::aws-sdk:ssm:getParameter
+  InvalidState:
+    Type: Pass
     End: true
-    ResultSelector:
+    Parameters:
       statusCode: 302
       headers:
-        location.$: $.Parameter.Value
-    Parameters:
-      Name: ${error_uri_parameter}
-    Catch:
-      - Next: Forbidden
-        ErrorEquals:
-          - States.ALL
-  Forbidden:
-    Type: Fail
+        location: ${slack_error_uri}
   CompleteOAuth:
     Type: Task
     Resource: ${oauth_function_arn}
     Next: OK?
     Parameters:
+      redirect_uri: ${slack_redirect_uri}
       code.$: $.code
-      redirect_uri: ${redirect_uri}
   OK?:
     Type: Choice
     Default: PublishEvent
     Choices:
-      - Next: GetErrorUriForOAuthError
+      - Next: OAuthError
         Variable: $.ok
         BooleanEquals: false
-  GetErrorUriForOAuthError:
+  OAuthError:
+    Type: Pass
+    End: true
+    Parameters:
+      statusCode: 302
+      headers:
+        location: ${slack_error_uri}
+  PublishEvent:
     Type: Task
-    Resource: arn:aws:states:::aws-sdk:ssm:getParameter
+    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
     End: true
     ResultSelector:
       statusCode: 302
       headers:
-        location.$: $.Parameter.Value
-    Parameters:
-      Name: ${error_uri_parameter}
-    Catch:
-      - Next: Forbidden
-        ErrorEquals:
-          - States.ALL
-  PublishEvent:
-    Type: Task
-    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
-    Next: GetSuccessUri
+        location: ${slack_success_uri}
     Parameters:
       Entries:
         - EventBusName: ${event_bus_name}
           Source: ${domain_name}
           DetailType: ${detail_type}
           Detail.$: $
-  GetSuccessUri:
-    Type: Task
-    Resource: arn:aws:states:::aws-sdk:ssm:getParameter
-    End: true
-    ResultSelector:
-      statusCode: 302
-      headers:
-        location.$: $.Parameter.Value
-    Parameters:
-      Name: ${success_uri_parameter}
-    Catch:
-      - Next: DefaultSuccessUri
-        ErrorEquals:
-          - States.ALL
-  DefaultSuccessUri:
-    Type: Pass
-    End: true
-    Result:
-      statusCode: 302
-      headers:
-        location: slack://open
