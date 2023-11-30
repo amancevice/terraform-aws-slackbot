@@ -9,7 +9,7 @@ States:
     ResultSelector:
       ArnParts.$: States.StringSplit($.ExecutionArn, ':')
     Parameters:
-      StateMachineArn: arn:aws:states:${region}:${account}:stateMachine:${name}-state
+      StateMachineArn: arn:aws:states:${region}:${account}:stateMachine:${name}-get-oauth-state
   Redirect:
     Type: Pass
     End: true

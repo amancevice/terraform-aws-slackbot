@@ -13,6 +13,12 @@ variable "log_retention_in_days" {
   default     = 14
 }
 
+variable "oauth_timeout_seconds" {
+  description = "TTL for OAuth state"
+  type        = number
+  default     = 300
+}
+
 variable "tags" {
   type        = map(string)
   description = "Slackbot tags"
@@ -71,9 +77,10 @@ variable "domain_zone_id" {
 #   SLACK   #
 #############
 
-variable "slack_signing_secret_parameter" {
+variable "slack_signing_secret" {
   description = "Slackbot signing secret SSM parameter name"
   type        = string
+  sensitive   = true
 }
 
 variable "slack_client_id" {
@@ -81,9 +88,10 @@ variable "slack_client_id" {
   type        = string
 }
 
-variable "slack_client_secret_parameter" {
+variable "slack_client_secret" {
   description = "Slackbot OAuth client secret SSM parameter name"
   type        = string
+  sensitive   = true
 }
 
 variable "slack_error_uri" {
@@ -108,4 +116,10 @@ variable "slack_user_scope" {
   description = "Slackbot OAuth user scopes"
   type        = string
   default     = null
+}
+
+variable "slack_token" {
+  description = "Slackbot OAuth token SSM parameter name"
+  type        = string
+  sensitive   = true
 }

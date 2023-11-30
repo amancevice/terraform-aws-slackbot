@@ -1,0 +1,46 @@
+---
+StartAt: GetView
+States:
+  GetView:
+    Type: Pass
+    Next: OpenView
+    InputPath: $.detail
+    Parameters:
+      trigger_id.$: $.trigger_id
+      view:
+        type: modal
+        title:
+          type: plain_text
+          text: My App
+        submit:
+          type: plain_text
+          text: Submit
+        close:
+          type: plain_text
+          text: Cancel
+        blocks:
+          - block_id: slack_oauth_scopes
+            type: input
+            label:
+              type: plain_text
+              text: Slack OAuth Scopes
+            element:
+              type: external_select
+              action_id: slack_oauth_scopes
+              placeholder:
+                type: plain_text
+                text: Select scope
+  OpenView:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    End: true
+    Parameters:
+      ApiEndpoint: https://slack.com/api/views.open
+      Method: POST
+      Authentication:
+        ConnectionArn: ${connection_arn}
+      Headers:
+        Content-Type: application/json; charset=utf-8
+      RequestBody:
+        trigger_id.$: $.trigger_id
+        view.$: States.JsonToString($.view)

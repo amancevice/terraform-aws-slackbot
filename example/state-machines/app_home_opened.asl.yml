@@ -1,0 +1,38 @@
+---
+StartAt: GetView
+States:
+  GetView:
+    Type: Pass
+    Next: PublishView
+    InputPath: $.detail
+    Parameters:
+      user_id.$: $.event.user
+      view:
+        type: home
+        blocks:
+          - type: header
+            text:
+              type: plain_text
+              text: Slackbot Home
+          - type: actions
+            elements:
+              - type: button
+                action_id: open_modal
+                value: open_modal
+                text:
+                  type: plain_text
+                  text: Open Modal
+  PublishView:
+    Type: Task
+    Resource: arn:aws:states:::http:invoke
+    End: true
+    Parameters:
+      ApiEndpoint: https://slack.com/api/views.publish
+      Method: POST
+      Authentication:
+        ConnectionArn: ${connection_arn}
+      Headers:
+        Content-Type: application/json; charset=utf-8
+      RequestBody:
+        user_id.$: $.user_id
+        view.$: States.JsonToString($.view)

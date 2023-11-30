@@ -1,0 +1,312 @@
+---
+openapi: 3.0.1
+info:
+  title: ${title}
+  description: ${description}
+  version: 1.0.0
+servers:
+  - url: ${server_url}
+    x-amazon-apigateway-endpoint-configuration:
+      disableExecuteApiEndpoint: true
+paths:
+  /callback:
+    post:
+      operationId: postCallback
+      description: Slack interactive component callback
+      parameters:
+        - $ref: "#/components/parameters/x-slack-request-timestamp"
+        - $ref: "#/components/parameters/x-slack-signature"
+      responses:
+        200:
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: aws
+        uri: arn:aws:apigateway:${region}:states:action/StartSyncExecution
+        httpMethod: POST
+        credentials: ${role_arn}
+        timeoutInMillis: 3000
+        requestTemplates:
+          application/json: |-
+            {
+              "stateMachineArn": "$stageVariables.callbackStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+          application/x-www-form-urlencoded: |-
+            {
+              "stateMachineArn": "$stageVariables.callbackStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |-
+                #if($input.path('$.status') != "SUCCEEDED")
+                #set($context.responseOverride.status = 403)
+                {"message":"Forbidden"}#else
+                #set($output = $util.parseJson($input.path('$.output')))
+                #set($context.responseOverride.status = $output.statusCode)
+                #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                #if($output.body)$output.body#end
+                #end
+  /event:
+    post:
+      operationId: postEvent
+      description: Slack event callback
+      parameters:
+        - $ref: "#/components/parameters/x-slack-request-timestamp"
+        - $ref: "#/components/parameters/x-slack-signature"
+      responses:
+        200:
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: aws
+        uri: arn:aws:apigateway:${region}:states:action/StartSyncExecution
+        httpMethod: POST
+        credentials: ${role_arn}
+        timeoutInMillis: 3000
+        requestTemplates:
+          application/json: |-
+            {
+              "stateMachineArn": "$stageVariables.eventStateMachineArn",,
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+          application/x-www-form-urlencoded: |-
+            {
+              "stateMachineArn": "$stageVariables.eventStateMachineArn",,
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |-
+                #if($input.path('$.status') != "SUCCEEDED")
+                #set($context.responseOverride.status = 403)
+                {"message":"Forbidden"}#else
+                #set($output = $util.parseJson($input.path('$.output')))
+                #set($context.responseOverride.status = $output.statusCode)
+                #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                #if($output.body)$output.body#end
+                #end
+  /install:
+    get:
+      operationId: getInstall
+      description: Begin OAuth flow
+      responses:
+        200:
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: aws
+        uri: arn:aws:apigateway:${region}:states:action/StartSyncExecution
+        httpMethod: POST
+        credentials: ${role_arn}
+        timeoutInMillis: 3000
+        requestTemplates:
+          application/json: |-
+            {
+              "stateMachineArn": "$stageVariables.installStateMachineArn",,
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath}\""
+            }
+          application/x-www-form-urlencoded: |-
+            {
+              "stateMachineArn": "$stageVariables.installStateMachineArn",,
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath}\""
+            }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |-
+                #if($input.path('$.status') != "SUCCEEDED")
+                #set($context.responseOverride.status = 403)
+                {"message":"Forbidden"}#else
+                #set($output = $util.parseJson($input.path('$.output')))
+                #set($context.responseOverride.status = $output.statusCode)
+                #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                #if($output.body)$output.body#end
+                #end
+  /menu:
+    post:
+      operationId: postMenu
+      description: Slack interactive menu request
+      parameters:
+        - $ref: "#/components/parameters/x-slack-request-timestamp"
+        - $ref: "#/components/parameters/x-slack-signature"
+      responses:
+        200:
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: aws
+        uri: arn:aws:apigateway:${region}:states:action/StartSyncExecution
+        httpMethod: POST
+        credentials: ${role_arn}
+        timeoutInMillis: 3000
+        requestTemplates:
+          application/json: |-
+            {
+              "stateMachineArn": "$stageVariables.menuStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+          application/x-www-form-urlencoded: |-
+            {
+              "stateMachineArn": "$stageVariables.menuStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |-
+                #if($input.path('$.status') != "SUCCEEDED")
+                #set($context.responseOverride.status = 403)
+                {"message":"Forbidden"}#else
+                #set($output = $util.parseJson($input.path('$.output')))
+                #set($context.responseOverride.status = $output.statusCode)
+                #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                #if($output.body)$output.body#end
+                #end
+  /oauth:
+    get:
+      operationId: getOAuth
+      description: Complete OAuth flow
+      parameters:
+        - $ref: "#/components/parameters/code"
+        - $ref: "#/components/parameters/state"
+      responses:
+        200:
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: aws
+        uri: arn:aws:apigateway:${region}:states:action/StartSyncExecution
+        httpMethod: POST
+        credentials: ${role_arn}
+        timeoutInMillis: 3000
+        requestTemplates:
+          application/json: |-
+            {
+              "stateMachineArn": "$stageVariables.oauthStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"code\":\"$input.params('code')\",\"state\":\"$input.params('state')\"}"
+            }
+          application/x-www-form-urlencoded: |-
+            {
+              "stateMachineArn": "$stageVariables.oauthStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"code\":\"$input.params('code')\",\"state\":\"$input.params('state')\"}"
+            }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |-
+                #if($input.path('$.status') != "SUCCEEDED")
+                #set($context.responseOverride.status = 403)
+                {"message":"Forbidden"}#else
+                #set($output = $util.parseJson($input.path('$.output')))
+                #set($context.responseOverride.status = $output.statusCode)
+                #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                #if($output.body)$output.body#end
+                #end
+  /slash:
+    post:
+      operationId: postSlash
+      description: Slack slash command
+      parameters:
+        - $ref: "#/components/parameters/x-slack-request-timestamp"
+        - $ref: "#/components/parameters/x-slack-signature"
+      responses:
+        200:
+          description: 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: aws
+        uri: arn:aws:apigateway:${region}:states:action/StartSyncExecution
+        httpMethod: POST
+        credentials: ${role_arn}
+        timeoutInMillis: 3000
+        requestTemplates:
+          application/json: |-
+            {
+              "stateMachineArn": "$stageVariables.slashStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+          application/x-www-form-urlencoded: |-
+            {
+              "stateMachineArn": "$stageVariables.slashStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+            }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: |-
+                #if($input.path('$.status') != "SUCCEEDED")
+                #set($context.responseOverride.status = 403)
+                {"message":"Forbidden"}#else
+                #set($output = $util.parseJson($input.path('$.output')))
+                #set($context.responseOverride.status = $output.statusCode)
+                #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                #if($output.body)$output.body#end
+                #end
+components:
+  parameters:
+    code:
+      name: code
+      in: query
+      required: true
+      schema:
+        type: string
+    state:
+      name: state
+      in: query
+      required: true
+      schema:
+        type: string
+    x-slack-request-timestamp:
+      name: x-slack-request-timestamp
+      in: header
+      required: true
+      schema:
+        type: string
+    x-slack-signature:
+      name: x-slack-signature
+      in: header
+      required: true
+      schema:
+        type: string
+  schemas:
+    Empty:
+      title: Empty Schema
+      type: object
+x-amazon-apigateway-request-validators:
+  Validate query string parameters and headers:
+    validateRequestBody: false
+    validateRequestParameters: true

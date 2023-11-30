@@ -11,7 +11,7 @@ States:
     Parameters:
       ExecutionArn.$: >-
         States.Format(
-        'arn:aws:states:${region}:${account}:execution:${name}-state:{}',
+        'arn:aws:states:${region}:${account}:execution:${name}-get-oauth-state:{}',
         $.state)
   ValidState?:
     Type: Choice

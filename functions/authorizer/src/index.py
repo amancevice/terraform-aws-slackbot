@@ -4,17 +4,17 @@ from datetime import datetime, UTC
 from hashlib import sha256
 
 from logger import logger
-from secret import getSecret
 
-secret = getSecret(os.environ["SIGNING_SECRET_PARAMETER"])
+secret = os.environ["SIGNING_SECRET"]
 
 
 @logger.bind
 def handler(event, *_):
-    return authorize(secret, **event)
+    # Extract signing details
+    body = event["body"]
+    signature = event["signature"]
+    ts = event["ts"]
 
-
-def authorize(secret, body, signature, ts, **_):
     # Raise if message is older than 5min or in the future
     try:
         delta = int(now()) - int(ts)

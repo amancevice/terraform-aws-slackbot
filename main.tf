@@ -42,126 +42,23 @@ locals {
     split("/", x)[1] => dirname(dirname(x))
   }
 
-  request_mime_types = [
-    "application/json",
-    "application/x-www-form-urlencoded",
-  ]
-
-  request_parameters = {
-    default = {
-      "method.request.header.x-slack-request-timestamp" = true
-      "method.request.header.x-slack-signature"         = true
-    }
-    install = null
-    oauth = {
-      "method.request.querystring.code"  = true
-      "method.request.querystring.state" = true
-    }
+  state_machines = {
+    install  = "EXPRESS"
+    oauth    = "EXPRESS"
+    callback = "EXPRESS"
+    event    = "EXPRESS"
+    menu     = "EXPRESS"
+    slash    = "EXPRESS"
+    state    = "STANDARD"
   }
 
-  request_templates = {
-    default = {
-      routeKey  = "$context.httpMethod $context.resourcePath"
-      signature = "$input.params('x-slack-signature')"
-      ts        = "$input.params('x-slack-request-timestamp')"
-      body      = "$util.escapeJavaScript($util.escapeJavaScript($input.body))"
-    }
-    install = {
-      routeKey = "$context.httpMethod $context.resourcePath"
-    }
-    oauth = {
-      routeKey = "$context.httpMethod $context.resourcePath"
-      code     = "$input.params('code')"
-      state    = "$input.params('state')"
-    }
-  }
-
-  routes = {
-    "GET /install" = {
-      resource               = "install"
-      http_method            = "GET"
-      request_parameters     = local.request_parameters.install
-      request_template       = local.request_templates.install
-      state_machine_template = "install"
-    }
-    "GET /oauth" = {
-      resource               = "oauth"
-      http_method            = "GET"
-      request_parameters     = local.request_parameters.oauth
-      request_template       = local.request_templates.oauth
-      state_machine_template = "oauth"
-    }
-    "POST /callback" = {
-      resource               = "callback"
-      http_method            = "POST"
-      request_parameters     = local.request_parameters.default
-      request_template       = local.request_templates.default
-      state_machine_template = "default"
-    }
-    "POST /event" = {
-      resource               = "event"
-      http_method            = "POST"
-      request_parameters     = local.request_parameters.default
-      request_template       = local.request_templates.default
-      state_machine_template = "event"
-    }
-    "POST /menu" = {
-      resource               = "menu"
-      http_method            = "POST"
-      request_parameters     = local.request_parameters.default
-      request_template       = local.request_templates.default
-      state_machine_template = "default"
-    }
-    "POST /slash" = {
-      resource               = "slash"
-      http_method            = "POST"
-      request_parameters     = local.request_parameters.default
-      request_template       = local.request_templates.default
-      state_machine_template = "default"
-    }
-  }
-
-  resources = toset([
-    for key, route in local.routes : route.resource
-  ])
-
-  methods = {
-    for key, route in local.routes : key => {
-      resource_id        = aws_api_gateway_resource.resources[route.resource].id
-      http_method        = route.http_method
-      request_parameters = route.request_parameters
-    }
-  }
-
-  integrations = {
-    for key, route in local.routes : key => {
-      resource_id = aws_api_gateway_resource.resources[route.resource].id
-      http_method = aws_api_gateway_method.methods[key].http_method
-      request_templates = {
-        for mime_type in local.request_mime_types : mime_type => jsonencode({
-          stateMachineArn = aws_sfn_state_machine.states[key].arn
-          input           = jsonencode(route.request_template)
-        })
-      }
-    }
-  }
-
-  state_machines = merge(
-    {
-      for key, route in local.routes : key => {
-        name     = "${var.name}-${lower(route.http_method)}-${route.resource}"
-        template = "${path.module}/state-machines/${route.state_machine_template}.asl.yml"
-        type     = "EXPRESS"
-      }
-    },
-    {
-      state = {
-        name     = "${var.name}-state"
-        template = "${path.module}/state-machines/state.asl.yml"
-        type     = "STANDARD"
-      }
-    }
-  )
+  api_body = jsonencode(yamldecode(templatefile("${path.module}/openapi.yml", {
+    description = "${var.name} REST API"
+    region      = local.region
+    role_arn    = aws_iam_role.apigateway.arn
+    server_url  = "https://${var.domain_name}${coalesce(var.api_base_path, "/")}"
+    title       = var.name
+  })))
 }
 
 #######################
@@ -173,15 +70,32 @@ resource "aws_cloudwatch_event_bus" "bus" {
   tags = var.tags
 }
 
+##############################
+#   EVENTBRIDGE CONNECTION   #
+##############################
+
+resource "aws_cloudwatch_event_connection" "slack" {
+  name               = var.name
+  description        = "${var.name} Slack API connection"
+  authorization_type = "API_KEY"
+
+  auth_parameters {
+    api_key {
+      key   = "authorization"
+      value = "Bearer ${var.slack_token}"
+    }
+  }
+}
+
 ################
 #   REST API   #
 ################
 
 resource "aws_api_gateway_rest_api" "api" {
-  description                  = "${var.name} REST API"
-  disable_execute_api_endpoint = true
-  name                         = var.name
-  tags                         = var.tags
+  body        = local.api_body
+  description = "${var.name} REST API"
+  name        = var.name
+  tags        = var.tags
 
   endpoint_configuration {
     types = ["REGIONAL"]
@@ -192,15 +106,7 @@ resource "aws_api_gateway_deployment" "api" {
   rest_api_id = aws_api_gateway_rest_api.api.id
 
   triggers = {
-    redeployment = sha1(jsonencode([
-      timestamp(),
-      [for x in aws_api_gateway_resource.resources : x.id],
-      [for x in aws_api_gateway_method.methods : x.id],
-      [for x in aws_api_gateway_integration.integrations : x.id],
-      [for x in aws_api_gateway_integration.integrations : jsonencode(x.request_templates)],
-      [for x in aws_api_gateway_integration_response.responses : jsonencode(x.response_templates)],
-      [for x in aws_api_gateway_method_response.responses : jsonencode(x.response_models)],
-    ]))
+    redeployment = sha1(local.api_body)
   }
 
   lifecycle {
@@ -213,6 +119,11 @@ resource "aws_api_gateway_stage" "api" {
   rest_api_id   = aws_api_gateway_rest_api.api.id
   description   = "${var.name} default stage"
   stage_name    = "default"
+
+  variables = {
+    for key, state_machine in aws_sfn_state_machine.states :
+    "${key}StateMachineArn" => state_machine.arn
+  }
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api.arn
@@ -256,109 +167,6 @@ resource "aws_api_gateway_base_path_mapping" "api" {
   base_path   = var.api_base_path
   domain_name = var.domain_name
   stage_name  = aws_api_gateway_stage.api.stage_name
-}
-
-#############################
-#   REST API :: RESOURCES   #
-#############################
-
-resource "aws_api_gateway_resource" "resources" {
-  for_each = local.resources
-
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
-  path_part   = each.key
-}
-
-###########################
-#   REST API :: METHODS   #
-###########################
-
-resource "aws_api_gateway_request_validator" "headers" {
-  name                        = "Validate query string parameters and headers"
-  rest_api_id                 = aws_api_gateway_rest_api.api.id
-  validate_request_parameters = true
-}
-
-resource "aws_api_gateway_method" "methods" {
-  depends_on = [aws_api_gateway_resource.resources]
-  for_each   = local.methods
-
-  http_method        = each.value.http_method
-  request_parameters = each.value.request_parameters
-  resource_id        = each.value.resource_id
-
-  authorization        = "NONE"
-  request_validator_id = aws_api_gateway_request_validator.headers.id
-  rest_api_id          = aws_api_gateway_rest_api.api.id
-}
-
-################################
-#   REST API :: INTEGRATIONS   #
-################################
-
-resource "aws_api_gateway_integration" "integrations" {
-  depends_on = [aws_api_gateway_method.methods]
-  for_each   = local.integrations
-
-  http_method       = each.value.http_method
-  request_templates = each.value.request_templates
-  resource_id       = each.value.resource_id
-
-  credentials             = aws_iam_role.apigateway.arn
-  integration_http_method = "POST"
-  passthrough_behavior    = "NEVER"
-  rest_api_id             = aws_api_gateway_rest_api.api.id
-  timeout_milliseconds    = 3000
-  type                    = "AWS"
-  uri                     = "arn:aws:apigateway:${local.region}:states:action/StartSyncExecution"
-}
-
-#########################################
-#   REST API :: INTEGRATION RESPONSES   #
-#########################################
-
-resource "aws_api_gateway_integration_response" "responses" {
-  depends_on = [aws_api_gateway_integration.integrations]
-  for_each   = local.methods
-
-  http_method = each.value.http_method
-  resource_id = each.value.resource_id
-
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  status_code = 200
-
-  response_templates = {
-    "application/json" = <<-EOT
-      #if($input.path('$.status') != "SUCCEEDED")
-      #set($context.responseOverride.status = 403)
-      {"message":"Forbidden"}#else
-      #set($output = $util.parseJson($input.path('$.output')))
-      #set($context.responseOverride.status = $output.statusCode)
-      #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
-      #if($output.body)$output.body#end
-      #end
-    EOT
-  }
-}
-
-####################################
-#   REST API :: METHOD RESPONSES   #
-####################################
-
-resource "aws_api_gateway_method_response" "responses" {
-  depends_on = [aws_api_gateway_integration.integrations]
-  for_each   = local.methods
-
-  http_method = each.value.http_method
-  resource_id = each.value.resource_id
-
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  status_code = 200
-
-  response_models = {
-    "application/json" = "Empty"
-  }
 }
 
 ############################
@@ -408,13 +216,13 @@ data "archive_file" "packages" {
 #   LAMBDA HTTP AUTHORIZER FUNCTION   #
 #######################################
 
-resource "aws_cloudwatch_log_group" "http_authorizer" {
-  name              = "/aws/lambda/${var.name}-http-authorizer"
+resource "aws_cloudwatch_log_group" "authorizer" {
+  name              = "/aws/lambda/${var.name}-api-authorizer"
   retention_in_days = var.log_retention_in_days
 }
 
-resource "aws_iam_role" "http_authorizer" {
-  name        = "${var.name}-${local.region}-http-authorizer"
+resource "aws_iam_role" "authorizer" {
+  name        = "${var.name}-${local.region}-api-authorizer"
   description = "${var.name} HTTP event authorizer role"
 
   assume_role_policy = jsonencode({
@@ -435,41 +243,28 @@ resource "aws_iam_role" "http_authorizer" {
         Sid      = "Logs"
         Effect   = "Allow"
         Action   = "logs:*"
-        Resource = "${aws_cloudwatch_log_group.http_authorizer.arn}:*"
-      }]
-    })
-  }
-
-  inline_policy {
-    name = "ssm"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Sid      = "GetParameter"
-        Effect   = "Allow"
-        Action   = "ssm:GetParameter"
-        Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter${var.slack_signing_secret_parameter}"
+        Resource = "${aws_cloudwatch_log_group.authorizer.arn}:*"
       }]
     })
   }
 }
 
-resource "aws_lambda_function" "http_authorizer" {
+resource "aws_lambda_function" "authorizer" {
   architectures    = ["arm64"]
-  description      = "${var.name} HTTP event authorizer function"
-  filename         = data.archive_file.packages["http-authorizer"].output_path
-  function_name    = "${var.name}-http-authorizer"
+  description      = "${var.name} API authorizer function"
+  filename         = data.archive_file.packages["authorizer"].output_path
+  function_name    = "${var.name}-api-authorizer"
   handler          = "index.handler"
   memory_size      = 1024
-  role             = aws_iam_role.http_authorizer.arn
+  role             = aws_iam_role.authorizer.arn
   runtime          = local.lambda_runtime
-  source_code_hash = data.archive_file.packages["http-authorizer"].output_base64sha256
+  source_code_hash = data.archive_file.packages["authorizer"].output_base64sha256
   tags             = var.tags
   timeout          = 3
 
   environment {
     variables = {
-      SIGNING_SECRET_PARAMETER = var.slack_signing_secret_parameter
+      SIGNING_SECRET = var.slack_signing_secret
     }
   }
 }
@@ -478,13 +273,13 @@ resource "aws_lambda_function" "http_authorizer" {
 #   LAMBDA HTTP TRANSFORMER FUNCTION   #
 ########################################
 
-resource "aws_cloudwatch_log_group" "http_transformer" {
-  name              = "/aws/lambda/${var.name}-http-transformer"
+resource "aws_cloudwatch_log_group" "transformer" {
+  name              = "/aws/lambda/${var.name}-api-transformer"
   retention_in_days = var.log_retention_in_days
 }
 
-resource "aws_iam_role" "http_transformer" {
-  name        = "${var.name}-${local.region}-http-transformer"
+resource "aws_iam_role" "transformer" {
+  name        = "${var.name}-${local.region}-api-transformer"
   description = "${var.name} HTTP event transformer role"
 
   assume_role_policy = jsonencode({
@@ -505,22 +300,22 @@ resource "aws_iam_role" "http_transformer" {
         Sid      = "Logs"
         Effect   = "Allow"
         Action   = "logs:*"
-        Resource = "${aws_cloudwatch_log_group.http_transformer.arn}:*"
+        Resource = "${aws_cloudwatch_log_group.transformer.arn}:*"
       }]
     })
   }
 }
 
-resource "aws_lambda_function" "http_transformer" {
+resource "aws_lambda_function" "transformer" {
   architectures    = ["arm64"]
-  description      = "${var.name} HTTP event transformer function"
-  filename         = data.archive_file.packages["http-transformer"].output_path
-  function_name    = "${var.name}-http-transformer"
+  description      = "${var.name} API transformer function"
+  filename         = data.archive_file.packages["transformer"].output_path
+  function_name    = "${var.name}-api-transformer"
   handler          = "index.handler"
   memory_size      = 1024
-  role             = aws_iam_role.http_transformer.arn
+  role             = aws_iam_role.transformer.arn
   runtime          = local.lambda_runtime
-  source_code_hash = data.archive_file.packages["http-transformer"].output_base64sha256
+  source_code_hash = data.archive_file.packages["transformer"].output_base64sha256
   tags             = var.tags
   timeout          = 3
 }
@@ -556,20 +351,7 @@ resource "aws_iam_role" "oauth" {
         Sid      = "Logs"
         Effect   = "Allow"
         Action   = "logs:*"
-        Resource = "${aws_cloudwatch_log_group.http_transformer.arn}:*"
-      }]
-    })
-  }
-
-  inline_policy {
-    name = "ssm"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Sid      = "GetParameter"
-        Effect   = "Allow"
-        Action   = "ssm:GetParameter"
-        Resource = "arn:aws:ssm:${local.region}:${local.account}:parameter${var.slack_client_secret_parameter}"
+        Resource = "${aws_cloudwatch_log_group.oauth.arn}:*"
       }]
     })
   }
@@ -590,8 +372,8 @@ resource "aws_lambda_function" "oauth" {
 
   environment {
     variables = {
-      CLIENT_ID               = var.slack_client_id
-      CLIENT_SECRET_PARAMETER = var.slack_client_secret_parameter
+      CLIENT_ID     = var.slack_client_id
+      CLIENT_SECRET = var.slack_client_secret
     }
   }
 }
@@ -613,6 +395,40 @@ resource "aws_iam_role" "states" {
       Principal = { Service = "states.amazonaws.com" }
     }]
   })
+
+  inline_policy {
+    name = "slack-api"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "InvokeHttp"
+          Effect   = "Allow"
+          Action   = "states:InvokeHTTPEndpoint"
+          Resource = "*"
+          Condition = {
+            StringEquals = { "states:HTTPMethod" = ["GET", "POST"] }
+            StringLike   = { "states:HTTPEndpoint" = "https://slack.com/api/*" }
+          }
+        },
+        {
+          Sid      = "GetConnection"
+          Effect   = "Allow"
+          Action   = "events:RetrieveConnectionCredentials"
+          Resource = aws_cloudwatch_event_connection.slack.arn
+        },
+        {
+          Sid      = "GetSecret"
+          Effect   = "Allow"
+          Resource = aws_cloudwatch_event_connection.slack.secret_arn
+          Action = [
+            "secretsmanager:DescribeSecret",
+            "secretsmanager:GetSecretValue",
+          ]
+        }
+      ]
+    })
+  }
 
   inline_policy {
     name = "events"
@@ -689,30 +505,34 @@ resource "aws_cloudwatch_log_group" "states" {
 resource "aws_sfn_state_machine" "states" {
   for_each = local.state_machines
 
-  name = each.value.name
-  type = each.value.type
+  name = "${var.name}-api-${each.key}"
+  type = each.value
 
   role_arn = aws_iam_role.states.arn
 
-  definition = jsonencode(yamldecode(templatefile(each.value.template, {
-    account            = local.account
-    region             = local.region
-    slack_redirect_uri = local.redirect_uri
+  definition = jsonencode(yamldecode(templatefile(
+    fileexists("${path.module}/state-machines/${each.key}.asl.yml") ?
+    "${path.module}/state-machines/${each.key}.asl.yml" : "${path.module}/state-machines/default.asl.yml",
+    {
+      account            = local.account
+      region             = local.region
+      slack_redirect_uri = local.redirect_uri
 
-    event_bus_name                = aws_cloudwatch_event_bus.bus.name
-    http_authorizer_function_arn  = aws_lambda_function.http_authorizer.arn
-    http_transformer_function_arn = aws_lambda_function.http_transformer.arn
-    oauth_function_arn            = aws_lambda_function.oauth.arn
+      event_bus_name           = aws_cloudwatch_event_bus.bus.name
+      authorizer_function_arn  = aws_lambda_function.authorizer.arn
+      transformer_function_arn = aws_lambda_function.transformer.arn
+      oauth_function_arn       = aws_lambda_function.oauth.arn
 
-    detail_type = each.key
+      detail_type = each.key
 
-    name              = var.name
-    domain_name       = var.domain_name
-    slack_client_id   = var.slack_client_id
-    slack_error_uri   = var.slack_error_uri
-    slack_scope       = var.slack_scope
-    slack_success_uri = var.slack_success_uri
-    slack_user_scope  = var.slack_user_scope
+      name                  = var.name
+      domain_name           = var.domain_name
+      oauth_timeout_seconds = var.oauth_timeout_seconds
+      slack_client_id       = var.slack_client_id
+      slack_error_uri       = var.slack_error_uri
+      slack_scope           = var.slack_scope
+      slack_success_uri     = var.slack_success_uri
+      slack_user_scope      = var.slack_user_scope
   })))
 
   logging_configuration {

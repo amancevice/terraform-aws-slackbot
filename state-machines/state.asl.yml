@@ -3,5 +3,5 @@ StartAt: Wait
 States:
   Wait:
     Type: Wait
-    Seconds: 300
+    Seconds: ${oauth_timeout_seconds}
     End: true

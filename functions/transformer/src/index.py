@@ -22,4 +22,5 @@ def handler(event, *_):
     else:
         data = json.loads(body)
 
-    return data
+    event["body"] = data
+    return event

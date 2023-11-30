@@ -9,9 +9,8 @@ States:
       - StartAt: Authorize
         States:
           Authorize:
-            Type: Pass
-            # Type: Task
-            # Resource: ${http_authorizer_function_arn}
+            Type: Task
+            Resource: ${authorizer_function_arn}
             End: true
             Parameters:
               signature.$: $.signature
@@ -21,7 +20,7 @@ States:
         States:
           Transform:
             Type: Task
-            Resource: ${http_transformer_function_arn}
+            Resource: ${transformer_function_arn}
             End: true
             Parameters:
               routeKey.$: $.routeKey
@@ -41,8 +40,8 @@ States:
               Entries:
                 - EventBusName: ${event_bus_name}
                   Source: ${domain_name}
-                  DetailType: ${detail_type}
-                  Detail.$: $
+                  DetailType.$: $.routeKey
+                  Detail.$: $.body
       - StartAt: Respond
         States:
           Respond:
@@ -53,7 +52,7 @@ States:
             ResultSelector:
               Payload.$: States.StringToJson($.Payload)
             Parameters:
-              FunctionName.$: States.Format('${name}-{}', $.type)
+              FunctionName.$: States.Format('${name}-{}', $.body.type)
               Payload.$: States.JsonToString($)
             Catch:
               - Next: Default

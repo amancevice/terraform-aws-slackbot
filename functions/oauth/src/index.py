@@ -4,10 +4,9 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from logger import logger
-from secret import getSecret
 
 client_id = os.environ["CLIENT_ID"]
-client_secret = getSecret(os.environ["CLIENT_SECRET_PARAMETER"])
+client_secret = os.environ["CLIENT_SECRET"]
 
 
 @logger.bind
