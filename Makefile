@@ -1,4 +1,4 @@
-all: build
+all: build validate
 
 build clean ipython test:
 	make -C functions $@

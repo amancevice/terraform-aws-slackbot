@@ -120,13 +120,13 @@ paths:
         requestTemplates:
           application/json: |-
             {
-              "stateMachineArn": "$stageVariables.installStateMachineArn",,
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath}\""
+              "stateMachineArn": "$stageVariables.installStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\"}"
             }
           application/x-www-form-urlencoded: |-
             {
-              "stateMachineArn": "$stageVariables.installStateMachineArn",,
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath}\""
+              "stateMachineArn": "$stageVariables.installStateMachineArn",
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\"}"
             }
         responses:
           default:

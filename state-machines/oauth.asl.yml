@@ -11,7 +11,7 @@ States:
     Parameters:
       ExecutionArn.$: >-
         States.Format(
-        'arn:aws:states:${region}:${account}:execution:${name}-get-oauth-state:{}',
+        'arn:aws:states:${region}:${account}:execution:${name}-api-state:{}',
         $.state)
   ValidState?:
     Type: Choice
@@ -32,7 +32,7 @@ States:
     Resource: ${oauth_function_arn}
     Next: OK?
     Parameters:
-      redirect_uri: ${slack_redirect_uri}
+      redirect_uri: https://${domain_name}/oauth
       code.$: $.code
   OK?:
     Type: Choice
@@ -60,5 +60,5 @@ States:
       Entries:
         - EventBusName: ${event_bus_name}
           Source: ${domain_name}
-          DetailType: ${detail_type}
+          DetailType: GET /oauth
           Detail.$: $

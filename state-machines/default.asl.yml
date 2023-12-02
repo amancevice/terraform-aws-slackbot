@@ -22,6 +22,7 @@ States:
             Type: Task
             Resource: ${transformer_function_arn}
             End: true
+            ResultPath: $.body
             Parameters:
               routeKey.$: $.routeKey
               body.$: $.body
@@ -52,8 +53,8 @@ States:
             ResultSelector:
               Payload.$: States.StringToJson($.Payload)
             Parameters:
-              FunctionName.$: States.Format('${name}-{}', $.body.type)
-              Payload.$: States.JsonToString($)
+              FunctionName.$: States.Format('${name}-api-{}', $.body.type)
+              Payload.$: States.JsonToString($.body)
             Catch:
               - Next: Default
                 ErrorEquals:

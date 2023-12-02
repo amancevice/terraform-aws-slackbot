@@ -12,24 +12,27 @@ output "connection" {
   value       = aws_cloudwatch_event_connection.slack
 }
 
-output "roles" {
-  description = "IAM roles"
+output "functions" {
+  description = "Lambda functions"
+  value       = aws_lambda_function.functions
+}
+
+output "logs" {
+  description = "CloudWatch log groups"
+  value       = aws_cloudwatch_log_group.logs
+}
+
+output "openapi" {
+  description = "OpenAPI JSON definition"
   value = {
-    apigateway  = aws_iam_role.apigateway
-    states      = aws_iam_role.states
-    authorizer  = aws_iam_role.authorizer
-    oauth       = aws_iam_role.oauth
-    transformer = aws_iam_role.transformer
+    json = aws_api_gateway_rest_api.api.body
+    yaml = yamlencode(jsondecode(aws_api_gateway_rest_api.api.body))
   }
 }
 
-output "functions" {
-  description = "Lambda functions"
-  value = {
-    authorizer  = aws_lambda_function.authorizer
-    transformer = aws_lambda_function.transformer
-    oauth       = aws_lambda_function.oauth
-  }
+output "roles" {
+  description = "IAM roles"
+  value       = aws_iam_role.roles
 }
 
 output "state_machines" {

@@ -14,7 +14,7 @@ def handler(event, *_):
         data = json.loads(dict(parse_qsl(body))["payload"])
 
     # body is a url-encoded string
-    elif routeKey == "POST /slash":
+    elif routeKey in ["POST /slash"]:
         data = dict(parse_qsl(body))
         data["type"] = "slash_command"
 
@@ -22,5 +22,4 @@ def handler(event, *_):
     else:
         data = json.loads(body)
 
-    event["body"] = data
-    return event
+    return data

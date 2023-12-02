@@ -80,8 +80,8 @@ module "slackbot" {
 #########################
 
 locals {
-  indexes           = fileset("${path.module}/functions", "**/index.py")
-  custom_responders = toset([for index in local.indexes : dirname(dirname(index))])
+  handlers          = fileset("${path.module}/functions", "**/index.py")
+  custom_responders = toset([for handler in local.handlers : dirname(dirname(handler))])
 }
 
 data "archive_file" "custom_responders" {
@@ -91,47 +91,16 @@ data "archive_file" "custom_responders" {
   type        = "zip"
 }
 
-resource "aws_iam_role" "custom_responders" {
-  for_each = local.custom_responders
-
-  name = "${local.region}-${local.name}-${each.value}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AssumeLambda"
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = "lambda.amazonaws.com" }
-    }]
-  })
-
-  inline_policy {
-    name = "access"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Sid      = "Logs"
-        Effect   = "Allow"
-        Action   = "logs:*"
-        Resource = "*"
-      }]
-    })
-  }
-}
-
 resource "aws_lambda_function" "custom_responders" {
   for_each         = local.custom_responders
   architectures    = ["arm64"]
   description      = "Custom ${each.value}"
   filename         = data.archive_file.custom_responders[each.value].output_path
-  function_name    = "${local.name}-${each.value}"
+  function_name    = "${local.name}-api-${each.value}"
   handler          = "index.handler"
-  memory_size      = 128
-  role             = aws_iam_role.custom_responders[each.value].arn
+  role             = module.slackbot.roles["lambda"].arn
   runtime          = "python3.11"
   source_code_hash = data.archive_file.custom_responders[each.value].output_base64sha256
-  timeout          = 3
 }
 
 resource "aws_cloudwatch_log_group" "custom_responders" {
@@ -143,34 +112,6 @@ resource "aws_cloudwatch_log_group" "custom_responders" {
 #######################
 #   APP HOME OPENED   #
 #######################
-
-resource "aws_iam_role" "app_home_opened" {
-  description = "Slackbot app home opened events"
-  name        = "${local.region}-${local.name}-app-home-opened-events"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AssumeEvents"
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = ["events.amazonaws.com"] }
-    }]
-  })
-
-  inline_policy {
-    name = "access"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Sid      = "StartExecution"
-        Effect   = "Allow"
-        Action   = "states:StartExecution"
-        Resource = aws_sfn_state_machine.app_home_opened.arn
-      }]
-    })
-  }
-}
 
 resource "aws_cloudwatch_event_rule" "app_home_opened" {
   description    = "Slackbot app home opened"
@@ -192,7 +133,7 @@ resource "aws_cloudwatch_event_rule" "app_home_opened" {
 resource "aws_cloudwatch_event_target" "app_home_opened" {
   arn            = aws_sfn_state_machine.app_home_opened.arn
   event_bus_name = aws_cloudwatch_event_rule.app_home_opened.event_bus_name
-  role_arn       = aws_iam_role.app_home_opened.arn
+  role_arn       = module.slackbot.roles["events"].arn
   rule           = aws_cloudwatch_event_rule.app_home_opened.name
   target_id      = aws_sfn_state_machine.app_home_opened.name
 }
@@ -210,34 +151,6 @@ resource "aws_sfn_state_machine" "app_home_opened" {
 ##################
 #   OPEN MODAL   #
 ##################
-
-resource "aws_iam_role" "open_modal" {
-  description = "Slackbot open modal events"
-  name        = "${local.region}-${local.name}-open-modal-events"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AssumeEvents"
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = ["events.amazonaws.com"] }
-    }]
-  })
-
-  inline_policy {
-    name = "access"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Sid      = "StartExecution"
-        Effect   = "Allow"
-        Action   = "states:StartExecution"
-        Resource = aws_sfn_state_machine.open_modal.arn
-      }]
-    })
-  }
-}
 
 resource "aws_cloudwatch_event_rule" "open_modal" {
   description    = "Slackbot open modal"
@@ -259,7 +172,7 @@ resource "aws_cloudwatch_event_rule" "open_modal" {
 resource "aws_cloudwatch_event_target" "open_modal" {
   arn            = aws_sfn_state_machine.open_modal.arn
   event_bus_name = aws_cloudwatch_event_rule.open_modal.event_bus_name
-  role_arn       = aws_iam_role.open_modal.arn
+  role_arn       = module.slackbot.roles["events"].arn
   rule           = aws_cloudwatch_event_rule.open_modal.name
   target_id      = aws_sfn_state_machine.open_modal.name
 }

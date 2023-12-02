@@ -22,6 +22,7 @@ States:
             Type: Task
             Resource: ${transformer_function_arn}
             End: true
+            ResultPath: $.body
             Parameters:
               routeKey.$: $.routeKey
               body.$: $.body
