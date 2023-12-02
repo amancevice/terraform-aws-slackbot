@@ -1,27 +1,8 @@
-#################
-#   TERRAFORM   #
-#################
+################
+#   AWS DATA   #
+################
 
-terraform {
-  required_version = "~> 1.0"
-
-  required_providers {
-    archive = {
-      source  = "hashicorp/archive"
-      version = "~> 2.3"
-    }
-
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-##################
-#   AWS REGION   #
-##################
-
+data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 ##############
@@ -29,60 +10,294 @@ data "aws_region" "current" {}
 ##############
 
 locals {
-  region = data.aws_region.current.name
+  account = data.aws_caller_identity.current.account_id
+  region  = data.aws_region.current.name
 
-  receiver_function_role_name  = coalesce(var.receiver_function_role_name, "${var.receiver_function_name}-${local.region}")
-  responder_function_role_name = coalesce(var.responder_function_role_name, "${var.responder_function_name}-${local.region}")
-  slack_api_function_role_name = coalesce(var.slack_api_function_role_name, "${var.slack_api_function_name}-${local.region}")
+  api_body = jsonencode(yamldecode(templatefile("${path.module}/openapi.yml", {
+    description = "${var.name} REST API"
+    region      = local.region
+    role_arn    = aws_iam_role.roles["apigateway"].arn
+    server_url  = "https://${var.domain_name}${coalesce(var.api_base_path, "/")}"
+    title       = var.name
+  })))
 
-  receiver_routes = [
-    "ANY /health",
-    "ANY /install",
-    "GET /oauth",
-    "POST /callbacks",
-    "POST /events",
-    "POST /menus",
-    "POST /slash/{cmd}",
-  ]
+  roles = {
+    apigateway = {
+      states = {
+        Version = "2012-10-17"
+        Statement = [{
+          Sid    = "StartExecution"
+          Effect = "Allow"
+          Action = "states:StartSyncExecution"
+          Resource = [
+            for key, _ in local.state_machines :
+            "arn:aws:states:${local.region}:${local.account}:stateMachine:${var.name}-api-${key}"
+          ]
+        }]
+      }
+    }
 
-  responder_routes = [
-    "POST /-/{proxy+}",
-  ]
+    events = {
+      states = {
+        Version = "2012-10-17"
+        Statement = [{
+          Sid      = "StartExecution"
+          Effect   = "Allow"
+          Resource = "arn:aws:states:${local.region}:${local.account}:stateMachine:${var.name}-*"
+          Action = [
+            "states:StartExecution",
+            "states:StartSyncExecution",
+          ]
+        }]
+      }
+    }
+
+    lambda = {
+      logs = {
+        Version = "2012-10-17"
+        Statement = [{
+          Sid      = "Logs"
+          Effect   = "Allow"
+          Action   = "logs:*"
+          Resource = "*"
+        }]
+      }
+    }
+
+    states = {
+      events = {
+        Version = "2012-10-17"
+        Statement = [{
+          Effect   = "Allow"
+          Action   = "events:PutEvents"
+          Resource = aws_cloudwatch_event_bus.bus.arn
+        }]
+      }
+
+      lambda = {
+        Version = "2012-10-17"
+        Statement = [{
+          Sid      = "Invoke"
+          Effect   = "Allow"
+          Action   = "lambda:InvokeFunction"
+          Resource = "arn:aws:lambda:${local.region}:${local.account}:function:${var.name}-*"
+        }]
+      }
+
+      logs = {
+        Version = "2012-10-17"
+        Statement = [{
+          Sid      = "Logs"
+          Effect   = "Allow"
+          Action   = "logs:*"
+          Resource = "*"
+        }]
+      }
+
+      slack-api = {
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid      = "InvokeHttp"
+            Effect   = "Allow"
+            Action   = "states:InvokeHTTPEndpoint"
+            Resource = "*"
+            Condition = {
+              StringEquals = { "states:HTTPMethod" = ["GET", "POST"] }
+              StringLike   = { "states:HTTPEndpoint" = "https://slack.com/api/*" }
+            }
+          },
+          {
+            Sid      = "GetConnection"
+            Effect   = "Allow"
+            Action   = "events:RetrieveConnectionCredentials"
+            Resource = aws_cloudwatch_event_connection.slack.arn
+          },
+          {
+            Sid      = "GetSecret"
+            Effect   = "Allow"
+            Resource = aws_cloudwatch_event_connection.slack.secret_arn
+            Action = [
+              "secretsmanager:DescribeSecret",
+              "secretsmanager:GetSecretValue",
+            ]
+          }
+        ]
+      }
+
+      states = {
+        Version = "2012-10-17"
+        Statement = [{
+          Effect = "Allow"
+          Action = [
+            "states:DescribeExecution",
+            "states:StartExecution",
+          ]
+          Resource = [
+            "arn:aws:states:${local.region}:${local.account}:stateMachine:${var.name}-api-state",
+            "arn:aws:states:${local.region}:${local.account}:execution:${var.name}-api-state:*",
+          ]
+        }]
+      }
+    }
+  }
+
+  functions = {
+    authorizer = {
+      description = "Slack request authorizer"
+      memory_size = 1024
+      variables = {
+        SIGNING_SECRET = var.slack_signing_secret
+      }
+    }
+    oauth = {
+      description = "Slack OAuth completion"
+      memory_size = 256
+      variables = {
+        CLIENT_ID     = var.slack_client_id
+        CLIENT_SECRET = var.slack_client_secret
+      }
+    }
+    transformer = {
+      description = "Slack request transformer"
+      memory_size = 1024
+      variables   = {}
+    }
+  }
+
+  state_machines = {
+    callback = {
+      type     = "EXPRESS"
+      template = "default"
+    }
+
+    event = {
+      type     = "EXPRESS"
+      template = "event"
+    }
+
+    install = {
+      type     = "EXPRESS"
+      template = "install"
+    }
+
+    menu = {
+      type     = "EXPRESS"
+      template = "default"
+    }
+
+    oauth = {
+      type     = "EXPRESS"
+      template = "oauth"
+    }
+
+    slash = {
+      type     = "EXPRESS"
+      template = "default"
+    }
+
+    state = {
+      type     = "STANDARD"
+      template = "state"
+    }
+
+  }
+
+  log_groups = merge(
+    { apigateway = "/aws/apigateway/${var.name}" },
+    { for key, _ in local.functions : "lambda-${key}" => "/aws/lambda/${var.name}-api-${key}" },
+    { for key, _ in local.state_machines : "states-${key}" => "/aws/states/${var.name}-api-${key}" },
+  )
 }
 
-#######################
-#   EVENTBRIDGE BUS   #
-#######################
+###################
+#   EVENTBRIDGE   #
+###################
 
 resource "aws_cloudwatch_event_bus" "bus" {
-  name = var.event_bus_name
+  name = var.name
   tags = var.tags
 }
 
-#######################
-#   SECRET CONTAINER  #
-#######################
+resource "aws_cloudwatch_event_connection" "slack" {
+  name               = var.name
+  description        = "${var.name} Slack API connection"
+  authorization_type = "API_KEY"
 
-resource "aws_secretsmanager_secret" "secret" {
-  description = var.secret_description
-  name        = var.secret_name
-  tags        = var.tags
+  auth_parameters {
+    api_key {
+      key   = "authorization"
+      value = "Bearer ${var.slack_token}"
+    }
+  }
 }
 
-###########
-#   DNS   #
-###########
+################
+#   REST API   #
+################
+
+resource "aws_api_gateway_rest_api" "api" {
+  body        = local.api_body
+  description = "${var.name} REST API"
+  name        = var.name
+  tags        = var.tags
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
+}
+
+resource "aws_api_gateway_deployment" "api" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+
+  triggers = {
+    redeployment = sha1(local.api_body)
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_api_gateway_stage" "api" {
+  deployment_id = aws_api_gateway_deployment.api.id
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  description   = "${var.name} default stage"
+  stage_name    = "default"
+
+  variables = {
+    for key, state_machine in aws_sfn_state_machine.states :
+    "${key}StateMachineArn" => state_machine.arn
+  }
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.logs["apigateway"].arn
+    format          = jsonencode(var.api_log_format)
+  }
+}
+
+resource "aws_api_gateway_domain_name" "api" {
+  certificate_arn = var.domain_certificate_arn
+  domain_name     = var.domain_name
+}
+
+resource "aws_api_gateway_base_path_mapping" "api" {
+  api_id      = aws_api_gateway_rest_api.api.id
+  base_path   = var.api_base_path
+  domain_name = var.domain_name
+  stage_name  = aws_api_gateway_stage.api.stage_name
+}
 
 resource "aws_route53_record" "api" {
-  name           = aws_apigatewayv2_domain_name.api.domain_name
+  name           = aws_api_gateway_domain_name.api.domain_name
   set_identifier = local.region
   type           = "A"
   zone_id        = var.domain_zone_id
 
   alias {
     evaluate_target_health = false
-    name                   = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].target_domain_name
-    zone_id                = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].hosted_zone_id
+    name                   = aws_api_gateway_domain_name.api.cloudfront_domain_name
+    zone_id                = aws_api_gateway_domain_name.api.cloudfront_zone_id
   }
 
   latency_routing_policy {
@@ -90,349 +305,110 @@ resource "aws_route53_record" "api" {
   }
 }
 
-################
-#   HTTP API   #
-################
-
-resource "aws_apigatewayv2_api" "api" {
-  description                  = var.api_description
-  disable_execute_api_endpoint = true
-  name                         = var.api_name
-  protocol_type                = "HTTP"
-  tags                         = var.tags
-}
-
-resource "aws_apigatewayv2_api_mapping" "api" {
-  api_id      = aws_apigatewayv2_api.api.id
-  domain_name = aws_apigatewayv2_domain_name.api.domain_name
-  stage       = aws_apigatewayv2_stage.default.name
-}
-
-resource "aws_apigatewayv2_domain_name" "api" {
-  domain_name = var.domain_name
-
-  domain_name_configuration {
-    certificate_arn = var.domain_certificate_arn
-    endpoint_type   = "REGIONAL"
-    security_policy = "TLS_1_2"
-  }
-}
-
-resource "aws_apigatewayv2_stage" "default" {
-  api_id      = aws_apigatewayv2_api.api.id
-  auto_deploy = var.api_auto_deploy
-  description = var.api_description
-  name        = "$default"
-
-  access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api.arn
-    format          = jsonencode(var.api_log_format)
-  }
-
-  lifecycle {
-    ignore_changes = [deployment_id]
-  }
-}
-
-############################
-#   HTTP API :: RECEIVER   #
-############################
-
-resource "aws_apigatewayv2_route" "receiver" {
-  for_each           = toset(local.receiver_routes)
-  api_id             = aws_apigatewayv2_api.api.id
-  authorization_type = "NONE"
-  route_key          = each.value
-  target             = "integrations/${aws_apigatewayv2_integration.receiver.id}"
-}
-
-resource "aws_apigatewayv2_integration" "receiver" {
-  api_id                 = aws_apigatewayv2_api.api.id
-  description            = var.receiver_function_description
-  integration_method     = "POST"
-  integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.receiver.invoke_arn
-  payload_format_version = "2.0"
-}
-
-#############################
-#   HTTP API :: RESPONDER   #
-#############################
-
-resource "aws_apigatewayv2_route" "responder" {
-  for_each           = toset(local.responder_routes)
-  api_id             = aws_apigatewayv2_api.api.id
-  authorization_type = "AWS_IAM"
-  route_key          = each.value
-  target             = "integrations/${aws_apigatewayv2_integration.responder.id}"
-}
-
-resource "aws_apigatewayv2_integration" "responder" {
-  api_id                 = aws_apigatewayv2_api.api.id
-  description            = var.responder_function_description
-  integration_method     = "POST"
-  integration_type       = "AWS_PROXY"
-  integration_uri        = aws_lambda_function.responder.invoke_arn
-  payload_format_version = "2.0"
-}
-
-#####################################
-#   HTTP API :: CUSTOM RESPONDERS   #
-#####################################
-
-data "aws_lambda_function" "custom" {
-  for_each      = var.custom_responders
-  function_name = each.value
-}
-
-resource "aws_apigatewayv2_route" "custom" {
-  for_each           = var.custom_responders
-  api_id             = aws_apigatewayv2_api.api.id
-  authorization_type = "AWS_IAM"
-  route_key          = each.key
-  target             = "integrations/${aws_apigatewayv2_integration.custom[each.key].id}"
-}
-
-resource "aws_apigatewayv2_integration" "custom" {
-  for_each               = var.custom_responders
-  api_id                 = aws_apigatewayv2_api.api.id
-  description            = data.aws_lambda_function.custom[each.key].description
-  integration_method     = "POST"
-  integration_type       = "AWS_PROXY"
-  integration_uri        = data.aws_lambda_function.custom[each.key].invoke_arn
-  payload_format_version = "2.0"
-}
-
-resource "aws_lambda_permission" "custom" {
-  for_each      = var.custom_responders
-  action        = "lambda:InvokeFunction"
-  function_name = data.aws_lambda_function.custom[each.key].function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = join("/", [aws_apigatewayv2_api.api.execution_arn, aws_apigatewayv2_stage.default.name, replace(each.key, " ", "")])
-}
-
-#######################
-#   LAMBDA PACKAGES   #
-#######################
-
-data "archive_file" "packages" {
-  for_each    = toset(["receiver", "responder", "slack-api"])
-  source_dir  = "${path.module}/functions/${each.value}/src"
-  output_path = "${path.module}/functions/${each.value}/package.zip"
-  type        = "zip"
-}
-
-################################
-#   LAMBDA RECEIVER FUNCTION   #
-################################
-
-resource "aws_iam_role" "receiver" {
-  name = local.receiver_function_role_name
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AssumeLambda"
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = ["lambda.amazonaws.com"] }
-    }]
-  })
-
-  inline_policy {
-    name = "access"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Sid      = "ExecuteApi"
-          Effect   = "Allow"
-          Action   = "execute-api:Invoke"
-          Resource = join("/", [aws_apigatewayv2_api.api.execution_arn, aws_apigatewayv2_stage.default.name, "POST/-/*"])
-        },
-        {
-          Sid      = "EventBridge"
-          Effect   = "Allow"
-          Action   = "events:PutEvents"
-          Resource = aws_cloudwatch_event_bus.bus.arn
-        },
-        {
-          Sid      = "Logs"
-          Effect   = "Allow"
-          Action   = "logs:*"
-          Resource = "*"
-        },
-        {
-          Sid      = "SecretsManager"
-          Effect   = "Allow"
-          Action   = "secretsmanager:GetSecretValue"
-          Resource = aws_secretsmanager_secret.secret.arn
-        }
-      ]
-    })
-  }
-}
-
-resource "aws_lambda_function" "receiver" {
-  architectures    = ["arm64"]
-  description      = var.receiver_function_description
-  filename         = data.archive_file.packages["receiver"].output_path
-  function_name    = var.receiver_function_name
-  handler          = "index.handler"
-  memory_size      = var.receiver_function_memory_size
-  role             = aws_iam_role.receiver.arn
-  runtime          = var.function_runtime
-  source_code_hash = data.archive_file.packages["receiver"].output_base64sha256
-  tags             = var.tags
-  timeout          = 3
-
-  environment {
-    variables = {
-      EVENT_BUS_NAME = aws_cloudwatch_event_bus.bus.name
-      SECRET_ID      = aws_secretsmanager_secret.secret.id
-    }
-  }
-}
-
-resource "aws_lambda_permission" "receiver" {
-  for_each      = toset([for x in local.receiver_routes : replace(x, " ", "")])
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.receiver.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = join("/", [aws_apigatewayv2_api.api.execution_arn, aws_apigatewayv2_stage.default.name, each.value])
-}
-
-#################################
-#   LAMBDA RESPONDER FUNCTION   #
-#################################
-
-resource "aws_iam_role" "responder" {
-  name = local.responder_function_role_name
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AssumeLambda"
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = "lambda.amazonaws.com" }
-    }]
-  })
-
-  inline_policy {
-    name = "access"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [{
-        Sid      = "Logs"
-        Effect   = "Allow"
-        Action   = "logs:*"
-        Resource = "*"
-      }]
-    })
-  }
-}
-
-resource "aws_lambda_function" "responder" {
-  architectures    = ["arm64"]
-  description      = var.responder_function_description
-  filename         = data.archive_file.packages["responder"].output_path
-  function_name    = var.responder_function_name
-  handler          = "index.handler"
-  memory_size      = var.responder_function_memory_size
-  role             = aws_iam_role.responder.arn
-  runtime          = var.function_runtime
-  source_code_hash = data.archive_file.packages["responder"].output_base64sha256
-  tags             = var.tags
-  timeout          = 3
-}
-
-resource "aws_lambda_permission" "responder" {
-  for_each      = toset([for x in local.responder_routes : replace(x, " ", "")])
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.responder.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = join("/", [aws_apigatewayv2_api.api.execution_arn, aws_apigatewayv2_stage.default.name, each.value])
-}
-
-##########################
-#   SLACK API FUNCTION   #
-##########################
-
-resource "aws_iam_role" "slack_api" {
-  name = local.slack_api_function_role_name
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AssumeLambda"
-      Effect    = "Allow"
-      Action    = "sts:AssumeRole"
-      Principal = { Service = "lambda.amazonaws.com" }
-    }]
-  })
-
-  inline_policy {
-    name = "access"
-    policy = jsonencode({
-      Version = "2012-10-17"
-      Statement = [
-        {
-          Sid      = "Logs"
-          Effect   = "Allow"
-          Action   = "logs:*"
-          Resource = "*"
-        },
-        {
-          Sid      = "SecretsManager"
-          Effect   = "Allow"
-          Action   = "secretsmanager:GetSecretValue"
-          Resource = aws_secretsmanager_secret.secret.arn
-      }]
-    })
-  }
-}
-
-resource "aws_lambda_function" "slack_api" {
-  architectures    = ["arm64"]
-  description      = var.slack_api_function_description
-  filename         = data.archive_file.packages["slack-api"].output_path
-  function_name    = var.slack_api_function_name
-  handler          = "index.handler"
-  memory_size      = var.slack_api_function_memory_size
-  role             = aws_iam_role.slack_api.arn
-  runtime          = var.function_runtime
-  source_code_hash = data.archive_file.packages["slack-api"].output_base64sha256
-  tags             = var.tags
-  timeout          = 3
-
-  environment {
-    variables = {
-      SECRET_ID = aws_secretsmanager_secret.secret.id
-    }
-  }
-}
-
 ############
 #   LOGS   #
 ############
 
-resource "aws_cloudwatch_log_group" "api" {
-  name              = "/aws/apigatewayv2/${aws_apigatewayv2_api.api.name}"
+resource "aws_cloudwatch_log_group" "logs" {
+  for_each          = local.log_groups
+  name              = each.value
   retention_in_days = var.log_retention_in_days
 }
 
-resource "aws_cloudwatch_log_group" "receiver" {
-  name              = "/aws/lambda/${aws_lambda_function.receiver.function_name}"
-  retention_in_days = var.log_retention_in_days
+#################
+#   IAM ROLES   #
+#################
+
+resource "aws_iam_role" "roles" {
+  for_each    = local.roles
+  name        = "${var.name}-${local.region}-${each.key}"
+  description = "${var.name} ${each.key} role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AssumeApiGateway"
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "${each.key}.amazonaws.com" }
+    }]
+  })
+
+  dynamic "inline_policy" {
+    for_each = each.value
+
+    content {
+      name   = inline_policy.key
+      policy = jsonencode(inline_policy.value)
+    }
+  }
 }
 
-resource "aws_cloudwatch_log_group" "responder" {
-  name              = "/aws/lambda/${aws_lambda_function.responder.function_name}"
-  retention_in_days = var.log_retention_in_days
+########################
+#   LAMBDA FUNCTIONS   #
+########################
+
+data "archive_file" "packages" {
+  for_each    = local.functions
+  source_dir  = "${path.module}/functions/${each.key}/src"
+  output_path = "${path.module}/functions/${each.key}/package.zip"
+  type        = "zip"
 }
 
-resource "aws_cloudwatch_log_group" "slack_api" {
-  name              = "/aws/lambda/${aws_lambda_function.slack_api.function_name}"
-  retention_in_days = var.log_retention_in_days
+resource "aws_lambda_function" "functions" {
+  for_each = local.functions
+
+  architectures    = ["arm64"]
+  description      = each.value.description
+  filename         = data.archive_file.packages[each.key].output_path
+  function_name    = "${var.name}-api-${each.key}"
+  handler          = "index.handler"
+  memory_size      = each.value.memory_size
+  role             = aws_iam_role.roles["lambda"].arn
+  runtime          = "python3.11"
+  source_code_hash = data.archive_file.packages[each.key].output_base64sha256
+  tags             = var.tags
+  timeout          = 3
+
+  environment {
+    variables = each.value.variables
+  }
+}
+
+######################
+#   STATE MACHINES   #
+######################
+
+resource "aws_sfn_state_machine" "states" {
+  for_each = local.state_machines
+
+  name = "${var.name}-api-${each.key}"
+  type = each.value.type
+
+  role_arn = aws_iam_role.roles["states"].arn
+
+  definition = jsonencode(yamldecode(templatefile("${path.module}/state-machines/${each.value.template}.asl.yml", {
+    account = local.account
+    region  = local.region
+
+    event_bus_name           = aws_cloudwatch_event_bus.bus.name
+    authorizer_function_arn  = aws_lambda_function.functions["authorizer"].arn
+    oauth_function_arn       = aws_lambda_function.functions["oauth"].arn
+    transformer_function_arn = aws_lambda_function.functions["transformer"].arn
+
+    name                  = var.name
+    domain_name           = var.domain_name
+    oauth_timeout_seconds = var.oauth_timeout_seconds
+    slack_client_id       = var.slack_client_id
+    slack_error_uri       = var.slack_error_uri
+    slack_scope           = var.slack_scope
+    slack_success_uri     = var.slack_success_uri
+    slack_user_scope      = var.slack_user_scope
+  })))
+
+  logging_configuration {
+    include_execution_data = true
+    level                  = "ALL"
+    log_destination        = "${aws_cloudwatch_log_group.logs["states-${each.key}"].arn}:*"
+  }
 }

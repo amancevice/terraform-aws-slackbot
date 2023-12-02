@@ -2,16 +2,21 @@
 #   GENERAL   #
 ###############
 
-variable "function_runtime" {
+variable "name" {
   type        = string
-  description = "Lambda function runtime"
-  default     = "python3.11"
+  description = "Slack app name"
 }
 
 variable "log_retention_in_days" {
   type        = number
   description = "Slackbot log retention in days"
   default     = 14
+}
+
+variable "oauth_timeout_seconds" {
+  description = "TTL for OAuth state"
+  type        = number
+  default     = 300
 }
 
 variable "tags" {
@@ -24,58 +29,28 @@ variable "tags" {
 #   API   #
 ###########
 
-variable "api_auto_deploy" {
-  type        = bool
-  description = "Slack API auto deploy"
-  default     = true
-}
-
-variable "api_description" {
+variable "api_base_path" {
   type        = string
-  description = "Slack API description"
-  default     = "Slack API"
+  description = "Slack API base path"
+  default     = null
 }
 
 variable "api_log_format" {
   type        = map(string)
   description = "Slack API log format"
   default = {
-    httpMethod              = "$context.httpMethod"
-    integrationErrorMessage = "$context.integrationErrorMessage"
-    ip                      = "$context.identity.sourceIp"
-    path                    = "$context.path"
-    protocol                = "$context.protocol"
-    requestId               = "$context.requestId"
-    requestTime             = "$context.requestTime"
-    responseLength          = "$context.responseLength"
-    routeKey                = "$context.routeKey"
-    status                  = "$context.status"
-  }
-}
-
-variable "api_name" {
-  type        = string
-  description = "Slack API name"
-}
-
-variable "api_stage_description" {
-  type        = string
-  description = "Slack API stage description"
-  default     = "Slack API stage"
-}
-
-####################
-#   CUSTOMIZATION  #
-####################
-
-variable "custom_responders" {
-  type        = map(string)
-  description = "Optional route key => Lambda invocation ARN mappings"
-  default     = {}
-
-  validation {
-    condition     = alltrue([for key, _ in var.custom_responders : startswith(key, "POST /-/")])
-    error_message = "Each key in custom_responders must start with \"POST /-/\""
+    caller            = "$context.identity.caller"
+    extendedRequestId = "$context.extendedRequestId"
+    httpMethod        = "$context.httpMethod"
+    ip                = "$context.identity.sourceIp"
+    integrationError  = "$context.integration.error"
+    protocol          = "$context.protocol"
+    requestId         = "$context.requestId"
+    requestTime       = "$context.requestTime"
+    resourcePath      = "$context.resourcePath"
+    responseLength    = "$context.responseLength"
+    status            = "$context.status"
+    user              = "$context.identity.user"
   }
 }
 
@@ -98,107 +73,53 @@ variable "domain_zone_id" {
   description = "Slack API Route53 hosted zone ID"
 }
 
-#################
-#   EVENT BUS   #
-#################
+#############
+#   SLACK   #
+#############
 
-variable "event_bus_name" {
+variable "slack_signing_secret" {
+  description = "Slackbot signing secret SSM parameter name"
   type        = string
-  description = "EventBridge bus name"
+  sensitive   = true
 }
 
-##############
-#   SECRET   #
-##############
-
-variable "secret_description" {
+variable "slack_client_id" {
+  description = "Slackbot OAuth client ID"
   type        = string
-  description = "SecretsManager secret description"
-  default     = "Slackbot secrets"
 }
 
-variable "secret_name" {
+variable "slack_client_secret" {
+  description = "Slackbot OAuth client secret SSM parameter name"
   type        = string
-  description = "SecretsManager secret name"
+  sensitive   = true
 }
 
-#######################
-#   RECEIVER LAMBDA   #
-#######################
-
-variable "receiver_function_description" {
+variable "slack_error_uri" {
+  description = "Slackbot OAuth error URI"
   type        = string
-  description = "Slack HTTP receiver function description"
-  default     = "Slack HTTP receiver"
-}
-
-variable "receiver_function_memory_size" {
-  type        = number
-  description = "Slack HTTP receiver memory size in MB"
-  default     = 3008
-}
-
-variable "receiver_function_name" {
-  type        = string
-  description = "Slack HTTP receiver function name"
-}
-
-variable "receiver_function_role_name" {
-  type        = string
-  description = "Slack HTTP receiver function role name"
   default     = null
 }
 
-########################
-#   RESPONDER LAMBDA   #
-########################
-
-variable "responder_function_description" {
+variable "slack_scope" {
+  description = "Slackbot OAuth scopes"
   type        = string
-  description = "Slack HTTP responder function description"
-  default     = "Slack HTTP responder"
-}
-
-variable "responder_function_memory_size" {
-  type        = number
-  description = "Slack HTTP receiver memory size in MB"
-  default     = 128
-}
-
-variable "responder_function_name" {
-  type        = string
-  description = "Slack HTTP responder function name"
-}
-
-variable "responder_function_role_name" {
-  type        = string
-  description = "Slack HTTP responder function role name"
   default     = null
 }
 
-########################
-#   SLACK API LAMBDA   #
-########################
-
-variable "slack_api_function_description" {
+variable "slack_success_uri" {
+  description = "Slackbot OAuth success URI"
   type        = string
-  description = "Slack API function description"
-  default     = "Slack API"
+  default     = "slack://open"
 }
 
-variable "slack_api_function_memory_size" {
-  type        = number
-  description = "Slack HTTP receiver memory size in MB"
-  default     = 512
-}
-
-variable "slack_api_function_name" {
+variable "slack_user_scope" {
+  description = "Slackbot OAuth user scopes"
   type        = string
-  description = "Slack API function name"
-}
-
-variable "slack_api_function_role_name" {
-  type        = string
-  description = "Slack API function role name"
   default     = null
+}
+
+variable "slack_token" {
+  description = "Slackbot OAuth token SSM parameter name"
+  type        = string
+  sensitive   = true
 }

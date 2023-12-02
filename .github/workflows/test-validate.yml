@@ -2,6 +2,8 @@ name: test-validate
 on:
   pull_request:
   push:
+    branches:
+      - main
 jobs:
   test:
     runs-on: ubuntu-latest

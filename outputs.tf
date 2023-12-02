@@ -1,28 +1,41 @@
-output "api" {
-  description = "API Gateway API"
-  value       = aws_apigatewayv2_api.api
+output "apigateway" {
+  description = "API Gateway resources"
+  value = {
+    rest_api    = aws_api_gateway_rest_api.api
+    domain_name = aws_api_gateway_domain_name.api
+    stage       = aws_api_gateway_stage.api
+  }
 }
 
-output "api_domain" {
-  description = "API Gateway custom domain"
-  value       = aws_apigatewayv2_domain_name.api
-}
-
-output "api_stage" {
-  description = "API Gateway stage"
-  value       = aws_apigatewayv2_stage.default
+output "connection" {
+  description = "EventBridge connection"
+  value       = aws_cloudwatch_event_connection.slack
 }
 
 output "functions" {
   description = "Lambda functions"
+  value       = aws_lambda_function.functions
+}
+
+output "logs" {
+  description = "CloudWatch log groups"
+  value       = aws_cloudwatch_log_group.logs
+}
+
+output "openapi" {
+  description = "OpenAPI JSON definition"
   value = {
-    receiver  = aws_lambda_function.receiver
-    responder = aws_lambda_function.responder
-    slack_api = aws_lambda_function.slack_api
+    json = aws_api_gateway_rest_api.api.body
+    yaml = yamlencode(jsondecode(aws_api_gateway_rest_api.api.body))
   }
 }
 
-output "secret" {
-  description = "SecretsManager secret container"
-  value       = aws_secretsmanager_secret.secret
+output "roles" {
+  description = "IAM roles"
+  value       = aws_iam_role.roles
+}
+
+output "state_machines" {
+  description = "State Machines"
+  value       = aws_sfn_state_machine.states
 }
