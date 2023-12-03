@@ -97,13 +97,13 @@ variable "slack_client_secret" {
 variable "slack_error_uri" {
   description = "Slackbot OAuth error URI"
   type        = string
-  default     = null
+  default     = ""
 }
 
 variable "slack_scope" {
   description = "Slackbot OAuth scopes"
   type        = string
-  default     = null
+  default     = ""
 }
 
 variable "slack_success_uri" {
@@ -115,7 +115,7 @@ variable "slack_success_uri" {
 variable "slack_user_scope" {
   description = "Slackbot OAuth user scopes"
   type        = string
-  default     = null
+  default     = ""
 }
 
 variable "slack_token" {

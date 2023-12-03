@@ -277,8 +277,12 @@ resource "aws_api_gateway_stage" "api" {
 }
 
 resource "aws_api_gateway_domain_name" "api" {
-  certificate_arn = var.domain_certificate_arn
-  domain_name     = var.domain_name
+  domain_name              = var.domain_name
+  regional_certificate_arn = var.domain_certificate_arn
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
 }
 
 resource "aws_api_gateway_base_path_mapping" "api" {
@@ -296,8 +300,8 @@ resource "aws_route53_record" "api" {
 
   alias {
     evaluate_target_health = false
-    name                   = aws_api_gateway_domain_name.api.cloudfront_domain_name
-    zone_id                = aws_api_gateway_domain_name.api.cloudfront_zone_id
+    name                   = aws_api_gateway_domain_name.api.regional_domain_name
+    zone_id                = aws_api_gateway_domain_name.api.regional_zone_id
   }
 
   latency_routing_policy {
