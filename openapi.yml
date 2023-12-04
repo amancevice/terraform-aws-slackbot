@@ -78,12 +78,12 @@ paths:
         requestTemplates:
           application/json: |-
             {
-              "stateMachineArn": "$stageVariables.eventStateMachineArn",,
+              "stateMachineArn": "$stageVariables.eventStateMachineArn",
               "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
             }
           application/x-www-form-urlencoded: |-
             {
-              "stateMachineArn": "$stageVariables.eventStateMachineArn",,
+              "stateMachineArn": "$stageVariables.eventStateMachineArn",
               "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
             }
         responses:
