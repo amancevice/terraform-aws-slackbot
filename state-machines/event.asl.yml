@@ -56,4 +56,4 @@ States:
     Parameters:
       statusCode: 200
       body:
-        challenge.$: $.challenge
+        challenge.$: $.body.challenge
