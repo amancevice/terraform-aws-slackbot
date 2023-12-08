@@ -200,7 +200,6 @@ locals {
       type     = "STANDARD"
       template = "state"
     }
-
   }
 
   log_groups = merge(

@@ -1,3 +1,7 @@
+###############
+#   OUTPUTS   #
+###############
+
 output "apigateway" {
   description = "API Gateway resources"
   value = {
