@@ -14,7 +14,11 @@ test: .venv
 
 .PHONY: all build clean test
 
-.venv: Pipfile
+Pipfile.lock: Pipfile | .venv
+	pipenv lock
+	touch $@
+
+.venv:
 	mkdir -p $@
 	pipenv install --dev
 	touch $@
