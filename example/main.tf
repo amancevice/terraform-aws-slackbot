@@ -3,7 +3,7 @@
 ###########
 
 provider "aws" {
-  region = "us-east-1"
+  region = local.region
 
   default_tags {
     tags = local.tags
@@ -17,7 +17,7 @@ provider "aws" {
 locals {
   domain = "slack.${var.domain}"
   name   = "slackbot"
-  region = data.aws_region.current.name
+  region = "us-east-1"
 
   parameters = {
     client_secret  = var.slack_client_secret
@@ -33,9 +33,6 @@ locals {
 ############
 #   DATA   #
 ############
-
-data "aws_region" "current" {
-}
 
 data "aws_acm_certificate" "cert" {
   domain = var.domain
