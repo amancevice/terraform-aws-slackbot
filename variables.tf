@@ -3,13 +3,13 @@
 ###############
 
 variable "name" {
-  type        = string
   description = "Slack app name"
+  type        = string
 }
 
 variable "log_retention_in_days" {
-  type        = number
   description = "Slackbot log retention in days"
+  type        = number
   default     = 14
 }
 
@@ -20,8 +20,8 @@ variable "oauth_timeout_seconds" {
 }
 
 variable "tags" {
-  type        = map(string)
   description = "Slackbot tags"
+  type        = map(string)
   default     = null
 }
 
@@ -30,14 +30,14 @@ variable "tags" {
 ###########
 
 variable "api_base_path" {
-  type        = string
   description = "Slack API base path"
+  type        = string
   default     = null
 }
 
 variable "api_log_format" {
-  type        = map(string)
   description = "Slack API log format"
+  type        = map(string)
   default = {
     caller            = "$context.identity.caller"
     extendedRequestId = "$context.extendedRequestId"
@@ -59,18 +59,18 @@ variable "api_log_format" {
 ###########
 
 variable "domain_certificate_arn" {
-  type        = string
   description = "Slack API custom domain ACM certificate ARN"
+  type        = string
 }
 
 variable "domain_name" {
-  type        = string
   description = "Slack API custom domain"
+  type        = string
 }
 
 variable "domain_zone_id" {
-  type        = string
   description = "Slack API Route53 hosted zone ID"
+  type        = string
 }
 
 #############
