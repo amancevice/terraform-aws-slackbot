@@ -1,0 +1,1333 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Serverless Slackbot
+
+Parameters:
+  ApiBasePath:
+    Description: Slack app REST API base path
+    Type: String
+    Default: ""
+  DomainCertificateArn:
+    Description: Slack app REST API domain ACM certificate ARN
+    Type: String
+  DomainName:
+    Description: Slack app REST API domain name
+    Type: String
+  DomainZoneId:
+    Description: Slack app REST API domain Route53 Hosted Zone ID
+    Type: String
+  FunctionRuntime:
+    Description: Lambda function runtime
+    Type: String
+    Default: python3.12
+  LogRetentionInDays:
+    Description: CloudWatch log retention period in days
+    Type: Number
+    Default: 0
+  OAuthTimeoutSeconds:
+    Description: OAuth state TTL
+    Type: Number
+    Default: 300
+  RestApiLogFormat:
+    Description: API Gateway REST API log format JSON
+    Type: String
+    Default: >-
+      {
+      "caller": "$context.identity.caller",
+      "extendedRequestId": "$context.extendedRequestId",
+      "httpMethod": "$context.httpMethod",
+      "ip": "$context.identity.sourceIp",
+      "integrationError": "$context.integration.error",
+      "protocol": "$context.protocol",
+      "requestId": "$context.requestId",
+      "requestTime": "$context.requestTime",
+      "resourcePath": "$context.resourcePath",
+      "responseLength": "$context.responseLength",
+      "status": "$context.status",
+      "user": "$context.identity.user"
+      }
+  SlackClientId:
+    Description: Slack OAuth Client ID
+    Type: String
+  SlackClientSecret:
+    Description: Slack OAuth Client Secret
+    Type: String
+  SlackErrorUri:
+    Description: Slack OAuth Error URI
+    Type: String
+  SlackScope:
+    Description: Slack OAuth scopes (comma-separated)
+    Type: String
+    Default: ""
+  SlackSigningSecret:
+    Description: Slack request signing secret
+    Type: String
+  SlackSuccessUri:
+    Description: Slack OAuth Success URI
+    Type: String
+    Default: slack://open
+  SlackToken:
+    Description: Slack API token
+    Type: String
+  SlackUserScope:
+    Description: Slack OAuth user scopes (comma-separated)
+    Type: String
+    Default: ""
+
+Resources:
+  #################
+  #   IAM ROLES   #
+  #################
+
+  ApiGatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: apigateway.amazonaws.com
+      Description: !Sub ${AWS::StackName} API Gateway Role
+      Policies:
+        - PolicyName: states
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: StartSyncExecution
+                Effect: Allow
+                Action: states:StartSyncExecution
+                Resource: !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-api-*
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: lambda.amazonaws.com
+      Description: !Sub ${AWS::StackName} Lambda role
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action: logs:*
+                Resource: "*"
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  StatesRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: states.amazonaws.com
+      Description: !Sub ${AWS::StackName} StepFunctions role
+      Policies:
+        - PolicyName: events
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              Effect: Allow
+              Action: events:PutEvents
+              Resource: !GetAtt EventBus.Arn
+        - PolicyName: lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-*
+        - PolicyName: logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action: logs:*
+                Resource: "*"
+        - PolicyName: slack-api
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeHttp
+                Effect: Allow
+                Action: states:InvokeHTTPEndpoint
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    states:HTTPMethod:
+                      - GET
+                      - POST
+                  StringLike:
+                    states:HTTPEndpoint: https://slack.com/api/*
+              - Sid: GetConnection
+                Effect: Allow
+                Action: events:RetrieveConnectionCredentials
+                Resource: !GetAtt EventConnection.Arn
+              - Sid: GetSecret
+                Effect: Allow
+                Resource: !GetAtt EventConnection.SecretArn
+                Action:
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:GetSecretValue
+        - PolicyName: states
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:DescribeExecution
+                  - states:StartExecution
+                Resource:
+                  - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-api-state
+                  - !Sub arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-api-state:*
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  ##############
+  #   EVENTS   #
+  ##############
+
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref AWS::StackName
+
+  EventConnection:
+    Type: AWS::Events::Connection
+    Properties:
+      AuthorizationType: API_KEY
+      AuthParameters:
+        ApiKeyAuthParameters:
+          ApiKeyName: authorization
+          ApiKeyValue: !Sub Bearer ${SlackToken}
+      Description: !Sub ${AWS::StackName} Slack API connection
+      Name: !Sub ${AWS::StackName}-slack-api
+
+  ################
+  #   REST API   #
+  ################
+
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Body:
+        openapi: 3.0.1
+        info:
+          title: !Ref AWS::StackName
+          description: !Sub ${AWS::StackName} REST API
+          version: 1.0.0
+        servers:
+          - url: !Sub https://${DomainName}/${ApiBasePath}
+            x-amazon-apigateway-endpoint-configuration:
+              disableExecuteApiEndpoint: true
+        paths:
+          /callback:
+            post:
+              operationId: postCallback
+              description: Slack interactive component callback
+              parameters:
+                - $ref: "#/components/parameters/x-slack-request-timestamp"
+                - $ref: "#/components/parameters/x-slack-signature"
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-request-validator: Validate query string parameters and headers
+              x-amazon-apigateway-integration:
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+                httpMethod: POST
+                credentials: !GetAtt ApiGatewayRole.Arn
+                timeoutInMillis: 3000
+                requestTemplates:
+                  application/json: |-
+                    {
+                      "stateMachineArn": "$stageVariables.callbackStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                  application/x-www-form-urlencoded: |-
+                    {
+                      "stateMachineArn": "$stageVariables.callbackStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: |-
+                        #if($input.path('$.status') != "SUCCEEDED")
+                        #set($context.responseOverride.status = 403)
+                        {"message":"Forbidden"}#else
+                        #set($output = $util.parseJson($input.path('$.output')))
+                        #set($context.responseOverride.status = $output.statusCode)
+                        #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                        #if($output.body)$output.body#end
+                        #end
+          /event:
+            post:
+              operationId: postEvent
+              description: Slack event callback
+              parameters:
+                - $ref: "#/components/parameters/x-slack-request-timestamp"
+                - $ref: "#/components/parameters/x-slack-signature"
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-request-validator: Validate query string parameters and headers
+              x-amazon-apigateway-integration:
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+                httpMethod: POST
+                credentials: !GetAtt ApiGatewayRole.Arn
+                timeoutInMillis: 3000
+                requestTemplates:
+                  application/json: |-
+                    {
+                      "stateMachineArn": "$stageVariables.eventStateMachineArn",,
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                  application/x-www-form-urlencoded: |-
+                    {
+                      "stateMachineArn": "$stageVariables.eventStateMachineArn",,
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: |-
+                        #if($input.path('$.status') != "SUCCEEDED")
+                        #set($context.responseOverride.status = 403)
+                        {"message":"Forbidden"}#else
+                        #set($output = $util.parseJson($input.path('$.output')))
+                        #set($context.responseOverride.status = $output.statusCode)
+                        #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                        #if($output.body)$output.body#end
+                        #end
+          /install:
+            get:
+              operationId: getInstall
+              description: Begin OAuth flow
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-request-validator: Validate query string parameters and headers
+              x-amazon-apigateway-integration:
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+                httpMethod: POST
+                credentials: !GetAtt ApiGatewayRole.Arn
+                timeoutInMillis: 3000
+                requestTemplates:
+                  application/json: |-
+                    {
+                      "stateMachineArn": "$stageVariables.installStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\"}"
+                    }
+                  application/x-www-form-urlencoded: |-
+                    {
+                      "stateMachineArn": "$stageVariables.installStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\"}"
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: |-
+                        #if($input.path('$.status') != "SUCCEEDED")
+                        #set($context.responseOverride.status = 403)
+                        {"message":"Forbidden"}#else
+                        #set($output = $util.parseJson($input.path('$.output')))
+                        #set($context.responseOverride.status = $output.statusCode)
+                        #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                        #if($output.body)$output.body#end
+                        #end
+          /menu:
+            post:
+              operationId: postMenu
+              description: Slack interactive menu request
+              parameters:
+                - $ref: "#/components/parameters/x-slack-request-timestamp"
+                - $ref: "#/components/parameters/x-slack-signature"
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-request-validator: Validate query string parameters and headers
+              x-amazon-apigateway-integration:
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+                httpMethod: POST
+                credentials: !GetAtt ApiGatewayRole.Arn
+                timeoutInMillis: 3000
+                requestTemplates:
+                  application/json: |-
+                    {
+                      "stateMachineArn": "$stageVariables.menuStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                  application/x-www-form-urlencoded: |-
+                    {
+                      "stateMachineArn": "$stageVariables.menuStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: |-
+                        #if($input.path('$.status') != "SUCCEEDED")
+                        #set($context.responseOverride.status = 403)
+                        {"message":"Forbidden"}#else
+                        #set($output = $util.parseJson($input.path('$.output')))
+                        #set($context.responseOverride.status = $output.statusCode)
+                        #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                        #if($output.body)$output.body#end
+                        #end
+          /oauth:
+            get:
+              operationId: getOAuth
+              description: Complete OAuth flow
+              parameters:
+                - $ref: "#/components/parameters/code"
+                - $ref: "#/components/parameters/state"
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-request-validator: Validate query string parameters and headers
+              x-amazon-apigateway-integration:
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+                httpMethod: POST
+                credentials: !GetAtt ApiGatewayRole.Arn
+                timeoutInMillis: 3000
+                requestTemplates:
+                  application/json: |-
+                    {
+                      "stateMachineArn": "$stageVariables.oauthStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"code\":\"$input.params('code')\",\"state\":\"$input.params('state')\"}"
+                    }
+                  application/x-www-form-urlencoded: |-
+                    {
+                      "stateMachineArn": "$stageVariables.oauthStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"code\":\"$input.params('code')\",\"state\":\"$input.params('state')\"}"
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: |-
+                        #if($input.path('$.status') != "SUCCEEDED")
+                        #set($context.responseOverride.status = 403)
+                        {"message":"Forbidden"}#else
+                        #set($output = $util.parseJson($input.path('$.output')))
+                        #set($context.responseOverride.status = $output.statusCode)
+                        #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                        #if($output.body)$output.body#end
+                        #end
+          /slash:
+            post:
+              operationId: postSlash
+              description: Slack slash command
+              parameters:
+                - $ref: "#/components/parameters/x-slack-request-timestamp"
+                - $ref: "#/components/parameters/x-slack-signature"
+              responses:
+                "200":
+                  description: 200 response
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-request-validator: Validate query string parameters and headers
+              x-amazon-apigateway-integration:
+                type: aws
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:states:action/StartSyncExecution
+                httpMethod: POST
+                credentials: !GetAtt ApiGatewayRole.Arn
+                timeoutInMillis: 3000
+                requestTemplates:
+                  application/json: |-
+                    {
+                      "stateMachineArn": "$stageVariables.slashStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                  application/x-www-form-urlencoded: |-
+                    {
+                      "stateMachineArn": "$stageVariables.slashStateMachineArn",
+                      "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+                    }
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: |-
+                        #if($input.path('$.status') != "SUCCEEDED")
+                        #set($context.responseOverride.status = 403)
+                        {"message":"Forbidden"}#else
+                        #set($output = $util.parseJson($input.path('$.output')))
+                        #set($context.responseOverride.status = $output.statusCode)
+                        #if($output.headers.location)#set($context.responseOverride.header.location = $output.headers.location)#end
+                        #if($output.body)$output.body#end
+                        #end
+        components:
+          parameters:
+            code:
+              name: code
+              in: query
+              required: true
+              schema:
+                type: string
+            state:
+              name: state
+              in: query
+              required: true
+              schema:
+                type: string
+            x-slack-request-timestamp:
+              name: x-slack-request-timestamp
+              in: header
+              required: true
+              schema:
+                type: string
+            x-slack-signature:
+              name: x-slack-signature
+              in: header
+              required: true
+              schema:
+                type: string
+          schemas:
+            Empty:
+              title: Empty Schema
+              type: object
+        x-amazon-apigateway-request-validators:
+          Validate query string parameters and headers:
+            validateRequestBody: false
+            validateRequestParameters: true
+      Description: !Sub ${AWS::StackName} REST API
+      DisableExecuteApiEndpoint: true
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  RestApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: RestApiDeployment
+    Properties:
+      BasePath: !Ref ApiBasePath
+      DomainName: !Ref DomainName
+      RestApiId: !Ref RestApi
+      Stage: default
+
+  RestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: !Sub ${AWS::StackName} Rest API deployment
+      RestApiId: !Ref RestApi
+      StageDescription:
+        AccessLogSetting:
+          DestinationArn: !GetAtt RestApiLogs.Arn
+          Format: !Ref RestApiLogFormat
+        Description: !Sub ${AWS::StackName} default stage
+        Tags:
+          - Key: Name
+            Value: !Ref AWS::StackName
+        Variables:
+          callbackStateMachineArn: !Ref Callback
+          eventStateMachineArn: !Ref Event
+          installStateMachineArn: !Ref Install
+          menuStateMachineArn: !Ref Menu
+          oauthStateMachineArn: !Ref OAuth
+          slashStateMachineArn: !Ref Slash
+      StageName: default
+
+  RestApiDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      RegionalCertificateArn: !Ref DomainCertificateArn
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  ###########
+  #   DNS   #
+  ###########
+
+  Route53Record:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt RestApiDomainName.RegionalDomainName
+        EvaluateTargetHealth: false
+        HostedZoneId: !GetAtt RestApiDomainName.RegionalHostedZoneId
+      HostedZoneId: !Ref DomainZoneId
+      Name: !Ref DomainName
+      Region: !Ref AWS::Region
+      SetIdentifier: !Ref AWS::Region
+      Type: A
+
+  ########################
+  #   LAMBDA FUNCTIONS   #
+  ########################
+
+  AuthorizerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import hmac
+          import os
+          from datetime import datetime, UTC
+          from hashlib import sha256
+
+          secret = os.environ["SIGNING_SECRET"]
+
+
+          def handler(event, *_):
+              # Extract signing details
+              body = event["body"]
+              signature = event["signature"]
+              ts = event["ts"]
+
+              # Raise if message is older than 5min or in the future
+              try:
+                  delta = int(now()) - int(ts)
+              except ValueError:
+                  raise Forbidden("Request timestamp invalid")
+              if delta > 5 * 60:
+                  raise Forbidden("Request timestamp is too old")
+              elif delta < 0:
+                  raise Forbidden("Request timestamp is in the future")
+
+              # Raise if signatures do not match
+              expected = sign(secret, body, ts)
+              if signature != expected:
+                  raise Forbidden("Invalid signature")
+
+              return True
+
+
+          def now():
+              return datetime.now(UTC).timestamp()
+
+
+          def sign(secret, body, ts=None):
+              ts = ts or str(int(now()))
+              data = f"v0:{ts}:{body}"
+              hex = hmac.new(secret.encode(), data.encode(), sha256).hexdigest()
+              signature = f"v0={hex}"
+              return signature
+
+
+          class Forbidden(Exception):
+              ...
+      Description: !Sub ${AWS::StackName} HTTP request authorizer
+      Environment:
+        Variables:
+          SIGNING_SECRET: !Ref SlackSigningSecret
+      FunctionName: !Sub ${AWS::StackName}-api-authorizer
+      Handler: index.handler
+      MemorySize: 1024
+      Runtime: !Ref FunctionRuntime
+      Timeout: 3
+      Role: !GetAtt LambdaRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  OAuthFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import json
+          import os
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          client_id = os.environ["CLIENT_ID"]
+          client_secret = os.environ["CLIENT_SECRET"]
+
+
+          def handler(event, *_):
+              # Set up OAuth request
+              url = "https://slack.com/api/oauth.v2.access"
+              headers = {"content-type": "application/x-www-form-urlencoded"}
+              payload = {"client_id": client_id, "client_secret": client_secret, **event}
+              data = urlencode(payload).encode()
+
+              # Execute request to complete OAuth workflow
+              req = Request(url, data, headers, method="POST")
+              res = urlopen(req)
+
+              # Return response
+              resdata = res.read().decode()
+              result = json.loads(resdata)
+              return result
+      Description: !Sub ${AWS::StackName} OAuth completion
+      Environment:
+        Variables:
+          CLIENT_ID: !Ref SlackClientId
+          CLIENT_SECRET: !Ref SlackClientSecret
+      FunctionName: !Sub ${AWS::StackName}-api-oauth
+      Handler: index.handler
+      MemorySize: 128
+      Runtime: !Ref FunctionRuntime
+      Timeout: 3
+      Role: !GetAtt LambdaRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  TransformerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import json
+          from urllib.parse import parse_qsl
+
+
+          def handler(event, *_):
+              body = event["body"]
+              routeKey = event["routeKey"]
+
+              # body is a url-encoded JSON string in the 'payload' key
+              if routeKey in ["POST /callback", "POST /menu"]:
+                  data = json.loads(dict(parse_qsl(body))["payload"])
+
+              # body is a url-encoded string
+              elif routeKey in ["POST /slash"]:
+                  data = dict(parse_qsl(body))
+                  data["type"] = "slash_command"
+
+              # body is a JSON string
+              else:
+                  data = json.loads(body)
+
+              return data
+      Description: !Sub ${AWS::StackName} HTTP request transfomer
+      FunctionName: !Sub ${AWS::StackName}-api-transformer
+      Handler: index.handler
+      MemorySize: 1024
+      Runtime: !Ref FunctionRuntime
+      Timeout: 3
+      Role: !GetAtt LambdaRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  ############
+  #   LOGS   #
+  ############
+
+  RestApiLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  AuthorizerFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-api-authorizer
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  OAuthFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-api-oauth
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  TransformerFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-api-transformer
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  CallbackLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/states/${AWS::StackName}-api-callback
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  EventLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/states/${AWS::StackName}-api-event
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  InstallLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/states/${AWS::StackName}-api-install
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  MenuLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/states/${AWS::StackName}-api-menu
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  OAuthLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/states/${AWS::StackName}-api-oauth
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  SlashLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/states/${AWS::StackName}-api-slash
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  StateLogs:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/states/${AWS::StackName}-api-state
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  ######################
+  #   STATE MACHINES   #
+  ######################
+
+  Callback:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      Definition:
+        StartAt: AuthorizeAndTransform
+        States:
+          AuthorizeAndTransform:
+            Type: Parallel
+            Next: PublishEventAndRespond
+            OutputPath: $[1]
+            Branches:
+              - StartAt: Authorize
+                States:
+                  Authorize:
+                    Type: Task
+                    Resource: !GetAtt AuthorizerFunction.Arn
+                    End: true
+                    Parameters:
+                      signature.$: $.signature
+                      ts.$: $.ts
+                      body.$: $.body
+              - StartAt: Transform
+                States:
+                  Transform:
+                    Type: Task
+                    Resource: !GetAtt TransformerFunction.Arn
+                    End: true
+                    ResultPath: $.body
+                    Parameters:
+                      routeKey.$: $.routeKey
+                      body.$: $.body
+          PublishEventAndRespond:
+            Type: Parallel
+            End: true
+            OutputPath: $[1]
+            Branches:
+              - StartAt: PublishEvent
+                States:
+                  PublishEvent:
+                    Type: Task
+                    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+                    End: true
+                    Parameters:
+                      Entries:
+                        - EventBusName: !Ref EventBus
+                          Source: !Ref DomainName
+                          DetailType.$: $.routeKey
+                          Detail.$: $.body
+              - StartAt: Respond
+                States:
+                  Respond:
+                    Type: Task
+                    Resource: arn:aws:states:::aws-sdk:lambda:invoke
+                    End: true
+                    OutputPath: $.Payload
+                    ResultSelector:
+                      Payload.$: States.StringToJson($.Payload)
+                    Parameters:
+                      FunctionName.$: !Sub States.Format('${AWS::StackName}-api-{}', $.body.type)
+                      Payload.$: States.JsonToString($.body)
+                    Catch:
+                      - Next: Default
+                        ErrorEquals:
+                          - Lambda.ResourceNotFoundException
+                  Default:
+                    Type: Pass
+                    End: true
+                    Parameters:
+                      statusCode: 200
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt CallbackLogs.Arn
+      RoleArn: !GetAtt StatesRole.Arn
+      StateMachineName: !Sub ${AWS::StackName}-api-callback
+      StateMachineType: EXPRESS
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  Event:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      Definition:
+        StartAt: AuthorizeAndTransform
+        States:
+          AuthorizeAndTransform:
+            Type: Parallel
+            Next: Challenge?
+            OutputPath: $[1]
+            Branches:
+              - StartAt: Authorize
+                States:
+                  Authorize:
+                    Type: Task
+                    Resource: !GetAtt AuthorizerFunction.Arn
+                    End: true
+                    Parameters:
+                      signature.$: $.signature
+                      ts.$: $.ts
+                      body.$: $.body
+              - StartAt: Transform
+                States:
+                  Transform:
+                    Type: Task
+                    Resource: !GetAtt TransformerFunction.Arn
+                    End: true
+                    ResultPath: $.body
+                    Parameters:
+                      routeKey.$: $.routeKey
+                      body.$: $.body
+          Challenge?:
+            Type: Choice
+            Default: PublishEvent
+            Choices:
+              - Next: Respond
+                And:
+                  - Variable: $.body.challenge
+                    IsPresent: true
+                  - Variable: $.body.type
+                    IsPresent: true
+                  - Variable: $.body.type
+                    StringEquals: url_verification
+          PublishEvent:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+            End: true
+            ResultSelector:
+              statusCode: 200
+            Parameters:
+              Entries:
+                - EventBusName: !Ref EventBus
+                  Source: !Ref DomainName
+                  DetailType.$: $.routeKey
+                  Detail.$: $.body
+          Respond:
+            Type: Pass
+            End: true
+            Parameters:
+              statusCode: 200
+              body:
+                challenge.$: $.challenge
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt EventLogs.Arn
+      RoleArn: !GetAtt StatesRole.Arn
+      StateMachineName: !Sub ${AWS::StackName}-api-event
+      StateMachineType: EXPRESS
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  Install:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      Definition:
+        StartAt: GetState
+        States:
+          GetState:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:sfn:startExecution
+            Next: Redirect
+            OutputPath: $.ArnParts[7]
+            ResultSelector:
+              ArnParts.$: States.StringSplit($.ExecutionArn, ':')
+            Parameters:
+              StateMachineArn: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${AWS::StackName}-api-state
+          Redirect:
+            Type: Pass
+            End: true
+            Parameters:
+              statusCode: 302
+              headers:
+                location.$: !Sub States.Format('https://slack.com/oauth/v2/authorize?client_id=${SlackClientId}&scope=${SlackScope}&user_scope=${SlackUserScope}&state={}&redirect_uri=https://${DomainName}/oauth', $)
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt InstallLogs.Arn
+      RoleArn: !GetAtt StatesRole.Arn
+      StateMachineName: !Sub ${AWS::StackName}-api-install
+      StateMachineType: EXPRESS
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  Menu:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      Definition:
+        StartAt: AuthorizeAndTransform
+        States:
+          AuthorizeAndTransform:
+            Type: Parallel
+            Next: PublishEventAndRespond
+            OutputPath: $[1]
+            Branches:
+              - StartAt: Authorize
+                States:
+                  Authorize:
+                    Type: Task
+                    Resource: !GetAtt AuthorizerFunction.Arn
+                    End: true
+                    Parameters:
+                      signature.$: $.signature
+                      ts.$: $.ts
+                      body.$: $.body
+              - StartAt: Transform
+                States:
+                  Transform:
+                    Type: Task
+                    Resource: !GetAtt TransformerFunction.Arn
+                    End: true
+                    ResultPath: $.body
+                    Parameters:
+                      routeKey.$: $.routeKey
+                      body.$: $.body
+          PublishEventAndRespond:
+            Type: Parallel
+            End: true
+            OutputPath: $[1]
+            Branches:
+              - StartAt: PublishEvent
+                States:
+                  PublishEvent:
+                    Type: Task
+                    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+                    End: true
+                    Parameters:
+                      Entries:
+                        - EventBusName: !Ref EventBus
+                          Source: !Ref DomainName
+                          DetailType.$: $.routeKey
+                          Detail.$: $.body
+              - StartAt: Respond
+                States:
+                  Respond:
+                    Type: Task
+                    Resource: arn:aws:states:::aws-sdk:lambda:invoke
+                    End: true
+                    OutputPath: $.Payload
+                    ResultSelector:
+                      Payload.$: States.StringToJson($.Payload)
+                    Parameters:
+                      FunctionName.$: !Sub States.Format('${AWS::StackName}-api-{}', $.body.type)
+                      Payload.$: States.JsonToString($.body)
+                    Catch:
+                      - Next: Default
+                        ErrorEquals:
+                          - Lambda.ResourceNotFoundException
+                  Default:
+                    Type: Pass
+                    End: true
+                    Parameters:
+                      statusCode: 200
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt MenuLogs.Arn
+      RoleArn: !GetAtt StatesRole.Arn
+      StateMachineName: !Sub ${AWS::StackName}-api-menu
+      StateMachineType: EXPRESS
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  OAuth:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      Definition:
+        StartAt: GetState
+        States:
+          GetState:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:sfn:describeExecution
+            Next: ValidState?
+            ResultPath: $.verification
+            ResultSelector:
+              status.$: $.Status
+            Parameters:
+              ExecutionArn.$: !Sub States.Format('arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:execution:${AWS::StackName}-api-state:{}', $.state)
+          ValidState?:
+            Type: Choice
+            Default: InvalidState
+            Choices:
+              - Next: CompleteOAuth
+                Variable: $.verification.status
+                StringEquals: RUNNING
+          InvalidState:
+            Type: Pass
+            End: true
+            Parameters:
+              statusCode: 302
+              headers:
+                location: !Ref SlackErrorUri
+          CompleteOAuth:
+            Type: Task
+            Resource: !GetAtt OAuthFunction.Arn
+            Next: OK?
+            Parameters:
+              redirect_uri: !Sub https://${DomainName}/oauth
+              code.$: $.code
+          OK?:
+            Type: Choice
+            Default: PublishEvent
+            Choices:
+              - Next: OAuthError
+                Variable: $.ok
+                BooleanEquals: false
+          OAuthError:
+            Type: Pass
+            End: true
+            Parameters:
+              statusCode: 302
+              headers:
+                location: !Ref SlackErrorUri
+          PublishEvent:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+            End: true
+            ResultSelector:
+              statusCode: 302
+              headers:
+                location: !Ref SlackSuccessUri
+            Parameters:
+              Entries:
+                - EventBusName: !Ref EventBus
+                  Source: !Ref DomainName
+                  DetailType: GET /oauth
+                  Detail.$: $
+
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt OAuthLogs.Arn
+      RoleArn: !GetAtt StatesRole.Arn
+      StateMachineName: !Sub ${AWS::StackName}-api-oauth
+      StateMachineType: EXPRESS
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  Slash:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      Definition:
+        StartAt: AuthorizeAndTransform
+        States:
+          AuthorizeAndTransform:
+            Type: Parallel
+            Next: PublishEventAndRespond
+            OutputPath: $[1]
+            Branches:
+              - StartAt: Authorize
+                States:
+                  Authorize:
+                    Type: Task
+                    Resource: !GetAtt AuthorizerFunction.Arn
+                    End: true
+                    Parameters:
+                      signature.$: $.signature
+                      ts.$: $.ts
+                      body.$: $.body
+              - StartAt: Transform
+                States:
+                  Transform:
+                    Type: Task
+                    Resource: !GetAtt TransformerFunction.Arn
+                    End: true
+                    ResultPath: $.body
+                    Parameters:
+                      routeKey.$: $.routeKey
+                      body.$: $.body
+          PublishEventAndRespond:
+            Type: Parallel
+            End: true
+            OutputPath: $[1]
+            Branches:
+              - StartAt: PublishEvent
+                States:
+                  PublishEvent:
+                    Type: Task
+                    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+                    End: true
+                    Parameters:
+                      Entries:
+                        - EventBusName: !Ref EventBus
+                          Source: !Ref DomainName
+                          DetailType.$: $.routeKey
+                          Detail.$: $.body
+              - StartAt: Respond
+                States:
+                  Respond:
+                    Type: Task
+                    Resource: arn:aws:states:::aws-sdk:lambda:invoke
+                    End: true
+                    OutputPath: $.Payload
+                    ResultSelector:
+                      Payload.$: States.StringToJson($.Payload)
+                    Parameters:
+                      FunctionName.$: !Sub States.Format('${AWS::StackName}-api-{}', $.body.type)
+                      Payload.$: States.JsonToString($.body)
+                    Catch:
+                      - Next: Default
+                        ErrorEquals:
+                          - Lambda.ResourceNotFoundException
+                  Default:
+                    Type: Pass
+                    End: true
+                    Parameters:
+                      statusCode: 200
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SlashLogs.Arn
+      RoleArn: !GetAtt StatesRole.Arn
+      StateMachineName: !Sub ${AWS::StackName}-api-slash
+      StateMachineType: EXPRESS
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  State:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      Definition:
+        StartAt: Wait
+        States:
+          Wait:
+            Type: Wait
+            Seconds: !Ref OAuthTimeoutSeconds
+            End: true
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StateLogs.Arn
+      RoleArn: !GetAtt StatesRole.Arn
+      StateMachineName: !Sub ${AWS::StackName}-api-state
+      StateMachineType: STANDARD
