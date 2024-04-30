@@ -1,6 +1,7 @@
 """
 Logger
 """
+
 import json
 import logging
 

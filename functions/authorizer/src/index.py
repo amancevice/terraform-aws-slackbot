@@ -48,5 +48,4 @@ def sign(secret, body, ts=None):
     return signature
 
 
-class Forbidden(Exception):
-    ...
+class Forbidden(Exception): ...
