@@ -34,12 +34,12 @@ paths:
           application/json: |-
             {
               "stateMachineArn": "$stageVariables.callbackStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
           application/x-www-form-urlencoded: |-
             {
               "stateMachineArn": "$stageVariables.callbackStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
         responses:
           default:
@@ -79,12 +79,12 @@ paths:
           application/json: |-
             {
               "stateMachineArn": "$stageVariables.eventStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
           application/x-www-form-urlencoded: |-
             {
               "stateMachineArn": "$stageVariables.eventStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
         responses:
           default:
@@ -166,12 +166,12 @@ paths:
           application/json: |-
             {
               "stateMachineArn": "$stageVariables.menuStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
           application/x-www-form-urlencoded: |-
             {
               "stateMachineArn": "$stageVariables.menuStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
         responses:
           default:
@@ -256,12 +256,12 @@ paths:
           application/json: |-
             {
               "stateMachineArn": "$stageVariables.slashStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
           application/x-www-form-urlencoded: |-
             {
               "stateMachineArn": "$stageVariables.slashStateMachineArn",
-              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.escapeJavaScript($util.escapeJavaScript($input.body))\"}"
+              "input": "{\"routeKey\":\"$context.httpMethod $context.resourcePath\",\"signature\":\"$input.params('x-slack-signature')\",\"ts\":\"$input.params('x-slack-request-timestamp')\",\"body\":\"$util.base64Encode($input.body)\"}"
             }
         responses:
           default:

@@ -15,7 +15,7 @@ States:
             Parameters:
               signature.$: $.signature
               ts.$: $.ts
-              body.$: $.body
+              body.$: States.Base64Decode($.body)
       - StartAt: Transform
         States:
           Transform:
@@ -25,7 +25,7 @@ States:
             ResultPath: $.body
             Parameters:
               routeKey.$: $.routeKey
-              body.$: $.body
+              body.$: States.Base64Decode($.body)
   Challenge?:
     Type: Choice
     Default: PublishEvent
