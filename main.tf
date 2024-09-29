@@ -313,7 +313,8 @@ resource "aws_route53_record" "api" {
 ############
 
 resource "aws_cloudwatch_log_group" "logs" {
-  for_each          = local.log_groups
+  for_each = local.log_groups
+
   name              = each.value
   retention_in_days = var.log_retention_in_days
 }
@@ -323,7 +324,8 @@ resource "aws_cloudwatch_log_group" "logs" {
 #################
 
 resource "aws_iam_role" "roles" {
-  for_each    = local.roles
+  for_each = local.roles
+
   name        = "${var.name}-${local.region}-${each.key}"
   description = "${var.name} ${each.key} role"
 
@@ -336,15 +338,24 @@ resource "aws_iam_role" "roles" {
       Principal = { Service = "${each.key}.amazonaws.com" }
     }]
   })
+}
 
-  dynamic "inline_policy" {
-    for_each = each.value
+resource "aws_iam_role_policy" "policies" {
+  for_each = merge(flatten([
+    for key, role in aws_iam_role.roles : [
+      for name, policy in local.roles[key] : {
+        "${key}-${name}" = {
+          role   = role.id
+          name   = name
+          policy = policy
+        }
+      }
+    ]
+  ])...)
 
-    content {
-      name   = inline_policy.key
-      policy = jsonencode(inline_policy.value)
-    }
-  }
+  role   = each.value.role
+  name   = each.value.name
+  policy = jsonencode(each.value.policy)
 }
 
 ########################
@@ -352,7 +363,8 @@ resource "aws_iam_role" "roles" {
 ########################
 
 data "archive_file" "packages" {
-  for_each    = local.functions
+  for_each = local.functions
+
   source_dir  = "${path.module}/functions/${each.key}/src"
   output_path = "${path.module}/functions/${each.key}/package.zip"
   type        = "zip"
