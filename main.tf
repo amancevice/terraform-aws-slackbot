@@ -353,9 +353,9 @@ resource "aws_iam_role_policy" "policies" {
     ]
   ])...)
 
-  role   = each.value.role
   name   = each.value.name
   policy = jsonencode(each.value.policy)
+  role   = each.value.role
 }
 
 ########################
