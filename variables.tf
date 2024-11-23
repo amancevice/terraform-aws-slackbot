@@ -73,6 +73,16 @@ variable "domain_zone_id" {
   type        = string
 }
 
+##############
+#   LAMBDA   #
+##############
+
+variable "lambda_runtime" {
+  description = "Lambda function runtime"
+  type        = string
+  default     = "python3.13"
+}
+
 #############
 #   SLACK   #
 #############

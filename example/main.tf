@@ -96,7 +96,7 @@ resource "aws_lambda_function" "custom_responders" {
   function_name    = "${local.name}-api-${each.value}"
   handler          = "index.handler"
   role             = module.slackbot.roles["lambda"].arn
-  runtime          = "python3.12"
+  runtime          = "python3.13"
   source_code_hash = data.archive_file.custom_responders[each.value].output_base64sha256
 }
 
