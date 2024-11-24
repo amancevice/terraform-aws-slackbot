@@ -166,40 +166,13 @@ locals {
   }
 
   state_machines = {
-    callback = {
-      type     = "EXPRESS"
-      template = "default"
-    }
-
-    event = {
-      type     = "EXPRESS"
-      template = "event"
-    }
-
-    install = {
-      type     = "EXPRESS"
-      template = "install"
-    }
-
-    menu = {
-      type     = "EXPRESS"
-      template = "default"
-    }
-
-    oauth = {
-      type     = "EXPRESS"
-      template = "oauth"
-    }
-
-    slash = {
-      type     = "EXPRESS"
-      template = "default"
-    }
-
-    state = {
-      type     = "STANDARD"
-      template = "state"
-    }
+    callback = "EXPRESS"
+    event    = "EXPRESS"
+    install  = "EXPRESS"
+    menu     = "EXPRESS"
+    oauth    = "EXPRESS"
+    slash    = "EXPRESS"
+    state    = "STANDARD"
   }
 
   log_groups = merge(
@@ -400,11 +373,11 @@ resource "aws_sfn_state_machine" "states" {
   for_each = local.state_machines
 
   name = "${var.name}-api-${each.key}"
-  type = each.value.type
+  type = each.value
 
   role_arn = aws_iam_role.roles["states"].arn
 
-  definition = jsonencode(yamldecode(templatefile("${path.module}/state-machines/${each.value.template}.asl.yml", {
+  definition = jsonencode(yamldecode(templatefile("${path.module}/state-machines/${each.key}.asl.yml", {
     account = local.account
     region  = local.region
 

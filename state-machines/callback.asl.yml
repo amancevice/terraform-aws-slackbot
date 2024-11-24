@@ -1,0 +1,72 @@
+---
+QueryLanguage: JSONata
+StartAt: AuthorizeAndTransform
+States:
+  AuthorizeAndTransform:
+    Type: Parallel
+    Next: PublishEventAndRespond
+    Assign:
+      event: "{% $states.result[1] %}"
+    Output:
+      EventBusName: ${event_bus_name}
+      Source: ${domain_name}
+      DetailType: "{% $states.input.routeKey %}"
+      Detail: "{% $states.result[1] %}"
+    Branches:
+      - StartAt: Authorize
+        States:
+          Authorize:
+            Type: Task
+            Resource: ${authorizer_function_arn}
+            End: true
+            Arguments:
+              signature: "{% $states.input.signature %}"
+              ts: "{% $states.input.ts %}"
+              body: "{% $states.input.body ~> $base64decode() %}"
+      - StartAt: Transform
+        States:
+          Transform:
+            Type: Succeed
+            Output: >-
+              {% (
+              $objectify := function($v, $i, $a) {{ $split($v, '=')[0]: $split($v, '=')[1] }};
+              $states.input.body
+              ~> $base64decode
+              ~> $split('&')
+              ~> $map($decodeUrlComponent)
+              ~> $map($objectify)
+              ~> $merge
+              ~> $lookup('payload')
+              ~> $parse
+              ) %}
+  PublishEventAndRespond:
+    Type: Parallel
+    End: true
+    Output: "{% $states.result[1] %}"
+    Branches:
+      - StartAt: PublishEvent
+        States:
+          PublishEvent:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+            End: true
+            Arguments:
+              Entries: "{% [$states.input] %}"
+      - StartAt: Respond
+        States:
+          Respond:
+            Type: Task
+            Resource: arn:aws:states:::aws-sdk:lambda:invoke
+            End: true
+            Output: "{% $parse($states.result.Payload) %}"
+            Arguments:
+              FunctionName: "{% '${name}-api-' & $event.type %}"
+              Payload: "{% $event %}"
+            Catch:
+              - Next: Default
+                ErrorEquals:
+                  - Lambda.ResourceNotFoundException
+          Default:
+            Type: Succeed
+            Output:
+              statusCode: 200

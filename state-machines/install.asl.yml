@@ -1,19 +1,21 @@
 ---
+QueryLanguage: JSONata
 StartAt: GetState
 States:
   GetState:
     Type: Task
     Resource: arn:aws:states:::aws-sdk:sfn:startExecution
     Next: Redirect
-    OutputPath: $.ArnParts[7]
-    ResultSelector:
-      ArnParts.$: States.StringSplit($.ExecutionArn, ':')
-    Parameters:
+    Arguments:
       StateMachineArn: arn:aws:states:${region}:${account}:stateMachine:${name}-api-state
+    Assign:
+      oauthState: "{% $split($states.result.ExecutionArn, ':')[7] %}"
   Redirect:
-    Type: Pass
-    End: true
-    Parameters:
+    Type: Succeed
+    Output:
       statusCode: 302
       headers:
-        location.$: States.Format('https://slack.com/oauth/v2/authorize?client_id=${slack_client_id}&scope=${slack_scope}&user_scope=${slack_user_scope}&state={}&redirect_uri=https://${domain_name}/oauth', $)
+        location: >-
+          {% 'https://slack.com/oauth/v2/authorize?client_id=${slack_client_id}&scope=${slack_scope}&user_scope=${slack_user_scope}&state='
+          & $oauthState
+          & '&redirect_uri=https://${domain_name}/oauth' %}
