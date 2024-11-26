@@ -1,3 +1,0 @@
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts    = "--cov src --cov test --cov-report term-missing --cov-report xml"
