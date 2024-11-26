@@ -1,4 +1,5 @@
 ---
+QueryLanguage: JSONata
 StartAt: Wait
 States:
   Wait:
