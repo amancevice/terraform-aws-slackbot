@@ -347,6 +347,7 @@ resource "aws_lambda_function" "functions" {
   function_name    = "${var.name}-api-${each.key}"
   handler          = "index.handler"
   memory_size      = each.value.memory_size
+  publish          = true
   role             = aws_iam_role.roles["lambda"].arn
   runtime          = var.lambda_runtime
   source_code_hash = data.archive_file.packages[each.key].output_base64sha256
@@ -355,6 +356,10 @@ resource "aws_lambda_function" "functions" {
 
   environment {
     variables = each.value.variables
+  }
+
+  snap_start {
+    apply_on = "PublishedVersions"
   }
 }
 
