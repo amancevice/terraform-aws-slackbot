@@ -95,9 +95,14 @@ resource "aws_lambda_function" "custom_responders" {
   filename         = data.archive_file.custom_responders[each.value].output_path
   function_name    = "${local.name}-api-${each.value}"
   handler          = "index.handler"
+  publish          = true
   role             = module.slackbot.roles["lambda"].arn
   runtime          = "python3.13"
   source_code_hash = data.archive_file.custom_responders[each.value].output_base64sha256
+
+  snap_start {
+    apply_on = "PublishedVersions"
+  }
 }
 
 resource "aws_cloudwatch_log_group" "custom_responders" {
