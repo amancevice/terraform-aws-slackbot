@@ -158,11 +158,6 @@ locals {
         CLIENT_SECRET = var.slack_client_secret
       }
     }
-    transformer = {
-      description = "Slack request transformer"
-      memory_size = 1024
-      variables   = {}
-    }
   }
 
   state_machines = {
@@ -381,10 +376,9 @@ resource "aws_sfn_state_machine" "states" {
     account = local.account
     region  = local.region
 
-    event_bus_name           = aws_cloudwatch_event_bus.bus.name
-    authorizer_function_arn  = aws_lambda_function.functions["authorizer"].arn
-    oauth_function_arn       = aws_lambda_function.functions["oauth"].arn
-    transformer_function_arn = aws_lambda_function.functions["transformer"].arn
+    event_bus_name          = aws_cloudwatch_event_bus.bus.name
+    authorizer_function_arn = aws_lambda_function.functions["authorizer"].arn
+    oauth_function_arn      = aws_lambda_function.functions["oauth"].arn
 
     name                  = var.name
     domain_name           = var.domain_name
