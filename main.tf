@@ -395,6 +395,8 @@ resource "aws_lambda_function" "functions" {
 ######################
 
 resource "aws_sfn_state_machine" "states" {
+  depends_on = [aws_cloudwatch_log_group.logs]
+
   for_each = local.state_machines
 
   name = "${var.name}-api-${each.key}"
