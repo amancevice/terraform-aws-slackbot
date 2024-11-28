@@ -1,59 +1,39 @@
 ---
+QueryLanguage: JSONata
 StartAt: AuthorizeAndTransform
 States:
   AuthorizeAndTransform:
-    Type: Parallel
+    Type: Task
+    Resource: ${authorizer_function_arn}
     Next: Challenge?
-    OutputPath: $[1]
-    Branches:
-      - StartAt: Authorize
-        States:
-          Authorize:
-            Type: Task
-            Resource: ${authorizer_function_arn}
-            End: true
-            Parameters:
-              signature.$: $.signature
-              ts.$: $.ts
-              body.$: States.Base64Decode($.body)
-      - StartAt: Transform
-        States:
-          Transform:
-            Type: Task
-            Resource: ${transformer_function_arn}
-            End: true
-            ResultPath: $.body
-            Parameters:
-              routeKey.$: $.routeKey
-              body.$: States.Base64Decode($.body)
+    Arguments:
+      signature: "{% $states.input.signature %}"
+      ts: "{% $states.input.ts %}"
+      body: "{% $states.input.body ~> $base64decode %}"
+    Assign:
+      event: "{% $states.input.body ~> $base64decode ~> $parse %}"
+    Output:
+      EventBusName: ${event_bus_name}
+      Source: ${domain_name}
+      DetailType: "{% $states.input.routeKey %}"
+      Detail: "{% $states.input.body ~> $base64decode ~> $parse %}"
   Challenge?:
     Type: Choice
     Default: PublishEvent
     Choices:
       - Next: Respond
-        And:
-          - Variable: $.body.challenge
-            IsPresent: true
-          - Variable: $.body.type
-            IsPresent: true
-          - Variable: $.body.type
-            StringEquals: url_verification
+        Condition: "{% $event.type = 'url_verification' %}"
   PublishEvent:
     Type: Task
     Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
     End: true
-    ResultSelector:
+    Arguments:
+      Entries: "{% [$states.input] %}"
+    Output:
       statusCode: 200
-    Parameters:
-      Entries:
-        - EventBusName: ${event_bus_name}
-          Source: ${domain_name}
-          DetailType.$: $.routeKey
-          Detail.$: $.body
   Respond:
-    Type: Pass
-    End: true
-    Parameters:
+    Type: Succeed
+    Output:
       statusCode: 200
       body:
-        challenge.$: $.body.challenge
+        challenge: "{% $event.challenge %}"

@@ -158,48 +158,16 @@ locals {
         CLIENT_SECRET = var.slack_client_secret
       }
     }
-    transformer = {
-      description = "Slack request transformer"
-      memory_size = 1024
-      variables   = {}
-    }
   }
 
   state_machines = {
-    callback = {
-      type     = "EXPRESS"
-      template = "default"
-    }
-
-    event = {
-      type     = "EXPRESS"
-      template = "event"
-    }
-
-    install = {
-      type     = "EXPRESS"
-      template = "install"
-    }
-
-    menu = {
-      type     = "EXPRESS"
-      template = "default"
-    }
-
-    oauth = {
-      type     = "EXPRESS"
-      template = "oauth"
-    }
-
-    slash = {
-      type     = "EXPRESS"
-      template = "default"
-    }
-
-    state = {
-      type     = "STANDARD"
-      template = "state"
-    }
+    callback = "EXPRESS"
+    event    = "EXPRESS"
+    install  = "EXPRESS"
+    menu     = "EXPRESS"
+    oauth    = "EXPRESS"
+    slash    = "EXPRESS"
+    state    = "STANDARD"
   }
 
   log_groups = merge(
@@ -379,6 +347,7 @@ resource "aws_lambda_function" "functions" {
   function_name    = "${var.name}-api-${each.key}"
   handler          = "index.handler"
   memory_size      = each.value.memory_size
+  publish          = true
   role             = aws_iam_role.roles["lambda"].arn
   runtime          = var.lambda_runtime
   source_code_hash = data.archive_file.packages[each.key].output_base64sha256
@@ -388,6 +357,10 @@ resource "aws_lambda_function" "functions" {
   environment {
     variables = each.value.variables
   }
+
+  snap_start {
+    apply_on = "PublishedVersions"
+  }
 }
 
 ######################
@@ -395,21 +368,22 @@ resource "aws_lambda_function" "functions" {
 ######################
 
 resource "aws_sfn_state_machine" "states" {
+  depends_on = [aws_cloudwatch_log_group.logs]
+
   for_each = local.state_machines
 
   name = "${var.name}-api-${each.key}"
-  type = each.value.type
+  type = each.value
 
   role_arn = aws_iam_role.roles["states"].arn
 
-  definition = jsonencode(yamldecode(templatefile("${path.module}/state-machines/${each.value.template}.asl.yml", {
+  definition = jsonencode(yamldecode(templatefile("${path.module}/state-machines/${each.key}.asl.yml", {
     account = local.account
     region  = local.region
 
-    event_bus_name           = aws_cloudwatch_event_bus.bus.name
-    authorizer_function_arn  = aws_lambda_function.functions["authorizer"].arn
-    oauth_function_arn       = aws_lambda_function.functions["oauth"].arn
-    transformer_function_arn = aws_lambda_function.functions["transformer"].arn
+    event_bus_name          = aws_cloudwatch_event_bus.bus.name
+    authorizer_function_arn = aws_lambda_function.functions["authorizer"].arn
+    oauth_function_arn      = aws_lambda_function.functions["oauth"].arn
 
     name                  = var.name
     domain_name           = var.domain_name

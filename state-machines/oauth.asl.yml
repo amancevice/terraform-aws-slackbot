@@ -1,29 +1,31 @@
 ---
+QueryLanguage: JSONata
 StartAt: GetState
 States:
   GetState:
     Type: Task
     Resource: arn:aws:states:::aws-sdk:sfn:describeExecution
     Next: ValidState?
-    ResultPath: $.verification
-    ResultSelector:
-      status.$: $.Status
-    Parameters:
-      ExecutionArn.$: >-
-        States.Format(
-        'arn:aws:states:${region}:${account}:execution:${name}-api-state:{}',
-        $.state)
+    Arguments:
+      ExecutionArn: >-
+        {% 'arn:aws:states:${region}:${account}:execution:${name}-api-state:'
+        & $states.input.state %}
+    Assign:
+      stateStatus: "{% $states.result.Status %}"
+    Output: "{% $states.input %}"
+    Catch:
+      - Next: InvalidState
+        ErrorEquals:
+          - States.ALL
   ValidState?:
     Type: Choice
     Default: InvalidState
     Choices:
       - Next: CompleteOAuth
-        Variable: $.verification.status
-        StringEquals: RUNNING
+        Condition: "{% $stateStatus = 'RUNNING' %}"
   InvalidState:
-    Type: Pass
-    End: true
-    Parameters:
+    Type: Succeed
+    Output:
       statusCode: 302
       headers:
         location: ${slack_error_uri}
@@ -31,20 +33,18 @@ States:
     Type: Task
     Resource: ${oauth_function_arn}
     Next: OK?
-    Parameters:
+    Arguments:
       redirect_uri: https://${domain_name}/oauth
-      code.$: $.code
+      code: "{% $states.input.code %}"
   OK?:
     Type: Choice
     Default: PublishEvent
     Choices:
       - Next: OAuthError
-        Variable: $.ok
-        BooleanEquals: false
+        Condition: "{% $states.input.ok != true %}"
   OAuthError:
-    Type: Pass
-    End: true
-    Parameters:
+    Type: Succeed
+    Output:
       statusCode: 302
       headers:
         location: ${slack_error_uri}
@@ -52,13 +52,13 @@ States:
     Type: Task
     Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
     End: true
-    ResultSelector:
-      statusCode: 302
-      headers:
-        location: ${slack_success_uri}
-    Parameters:
+    Arguments:
       Entries:
         - EventBusName: ${event_bus_name}
           Source: ${domain_name}
           DetailType: GET /oauth
-          Detail.$: $
+          Detail: "{% $states.input %}"
+    Output:
+      statusCode: 302
+      headers:
+        location: ${slack_success_uri}
