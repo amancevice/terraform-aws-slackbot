@@ -29,7 +29,7 @@ States:
             Type: Succeed
             Output: >-
               {% (
-              $objectify := function($v, $i, $a) {{ $split($v, '=')[0]: $split($v, '=')[1] }};
+              $objectify := function($v, $i, $a) {{ $split($v, /=/)[0]: $split($v, /^.*?=/)[1] }};
               $states.input.body
               ~> $base64decode
               ~> $split('&')
