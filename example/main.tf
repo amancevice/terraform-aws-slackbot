@@ -15,9 +15,13 @@ provider "aws" {
 ##############
 
 locals {
-  domain = "slack.${var.domain}"
-  name   = "slackbot"
-  region = "us-east-1"
+  domain             = "slack.${var.domain}"
+  name               = "slackbot"
+  region             = "us-east-1"
+  snap_start_enabled = false
+
+  handlers          = fileset("${path.module}/functions", "**/index.py")
+  custom_responders = toset([for handler in local.handlers : dirname(dirname(handler))])
 
   parameters = {
     client_secret  = var.slack_client_secret
@@ -58,6 +62,9 @@ module "slackbot" {
   domain_certificate_arn = data.aws_acm_certificate.cert.arn
   domain_zone_id         = data.aws_route53_zone.zone.id
 
+  # LAMBDA
+  lambda_snap_start_enabled = local.snap_start_enabled
+
   # SLACK
   slack_client_id      = var.slack_client_id
   slack_client_secret  = var.slack_client_secret
@@ -76,11 +83,6 @@ module "slackbot" {
 #   CUSTOM RESPONDERS   #
 #########################
 
-locals {
-  handlers          = fileset("${path.module}/functions", "**/index.py")
-  custom_responders = toset([for handler in local.handlers : dirname(dirname(handler))])
-}
-
 data "archive_file" "custom_responders" {
   for_each    = local.custom_responders
   source_dir  = "${path.module}/functions/${each.value}/src"
@@ -95,13 +97,13 @@ resource "aws_lambda_function" "custom_responders" {
   filename         = data.archive_file.custom_responders[each.value].output_path
   function_name    = "${local.name}-api-${each.value}"
   handler          = "index.handler"
-  publish          = true
+  publish          = local.snap_start_enabled
   role             = module.slackbot.roles["lambda"].arn
   runtime          = "python3.13"
   source_code_hash = data.archive_file.custom_responders[each.value].output_base64sha256
 
   snap_start {
-    apply_on = "PublishedVersions"
+    apply_on = local.snap_start_enabled ? "PublishedVersions" : "None"
   }
 }
 

@@ -83,6 +83,12 @@ variable "lambda_runtime" {
   default     = "python3.13"
 }
 
+variable "lambda_snap_start_enabled" {
+  description = "Lambda function SnapStart enabled"
+  type        = bool
+  default     = false
+}
+
 #############
 #   SLACK   #
 #############

@@ -144,15 +144,22 @@ locals {
 
   functions = {
     authorizer = {
-      description = "Slack request authorizer"
-      memory_size = 1024
+      description        = "Slack request authorizer"
+      memory_size        = 1024
+      publish            = var.lambda_snap_start_enabled
+      runtime            = var.lambda_runtime
+      snap_start_enabled = var.lambda_snap_start_enabled
       variables = {
         SIGNING_SECRET = var.slack_signing_secret
       }
     }
+
     oauth = {
-      description = "Slack OAuth completion"
-      memory_size = 256
+      description        = "Slack OAuth completion"
+      memory_size        = 256
+      publish            = var.lambda_snap_start_enabled
+      runtime            = var.lambda_runtime
+      snap_start_enabled = var.lambda_snap_start_enabled
       variables = {
         CLIENT_ID     = var.slack_client_id
         CLIENT_SECRET = var.slack_client_secret
@@ -347,9 +354,9 @@ resource "aws_lambda_function" "functions" {
   function_name    = "${var.name}-api-${each.key}"
   handler          = "index.handler"
   memory_size      = each.value.memory_size
-  publish          = true
+  publish          = each.value.publish
   role             = aws_iam_role.roles["lambda"].arn
-  runtime          = var.lambda_runtime
+  runtime          = each.value.runtime
   source_code_hash = data.archive_file.packages[each.key].output_base64sha256
   tags             = var.tags
   timeout          = 3
@@ -359,7 +366,7 @@ resource "aws_lambda_function" "functions" {
   }
 
   snap_start {
-    apply_on = "PublishedVersions"
+    apply_on = each.value.snap_start_enabled ? "PublishedVersions" : "None"
   }
 }
 
