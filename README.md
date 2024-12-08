@@ -35,6 +35,12 @@ Before applying this module you should have created the following resources:
 - ACM Certificate covering your app's subdomain (eg, `*.example.com`, `slack.example.com`)
 - A [Slack App](https://api.slack.com/apps) with a signing secret, OAuth client keys, and a default web API token
 
+## SnapStart
+
+AWS Lambda supports [SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) for functions using Python v3.12+ or greater.
+
+Enabling SnapStart will improve (decrease) the latency for your app's HTTP responses but it is not free, so it is disabled by default.
+
 ## Example Usage
 
 See the [example](./example) project for detailed usage.
@@ -60,6 +66,9 @@ module "slackbot" {
   domain_name            = "slack.example.com"
   domain_certificate_arn = data.aws_acm_certificate.cert.arn
   domain_zone_id         = data.aws_route53_zone.zone.id
+
+  # LAMBDA CONFIG
+  lambda_snap_start_enabled = true
 
   # SLACK
   slack_client_id      = var.slack_client_id
