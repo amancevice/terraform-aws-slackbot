@@ -14,5 +14,4 @@
 *.zip
 .terraform.lock.hcl
 .coverage
-.python-version
 coverage.xml
