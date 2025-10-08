@@ -11,7 +11,7 @@ data "aws_region" "current" {}
 
 locals {
   account = data.aws_caller_identity.current.account_id
-  region  = data.aws_region.current.name
+  region  = data.aws_region.current.region
 
   api_body = jsonencode(yamldecode(templatefile("${path.module}/openapi.yml", {
     description = "${var.name} REST API"
