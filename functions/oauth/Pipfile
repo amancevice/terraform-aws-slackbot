@@ -7,11 +7,11 @@ name = "pypi"
 boto3 = "*"
 
 [dev-packages]
-black = "*"
 ipdb = "*"
 ipython = "*"
 lambda-gateway = "*"
 pytest = "*"
 pytest-cov = "*"
+ruff = "*"
 
 [requires]

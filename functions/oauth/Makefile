@@ -9,7 +9,7 @@ ipython: .venv
 	PYTHONPATH=src pipenv run ipython
 
 test: .venv
-	pipenv run black --check src test
+	pipenv run ruff check src test
 	PYTHONPATH=src pipenv run pytest
 
 .PHONY: all build clean test
