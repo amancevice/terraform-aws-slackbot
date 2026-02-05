@@ -1,9 +1,6 @@
 import json
 from io import BytesIO
 from unittest import mock
-from urllib.parse import urlencode
-
-import pytest
 
 with mock.patch("urllib.request.urlopen"):
     with mock.patch("urllib.request.Request"):
