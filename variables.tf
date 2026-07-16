@@ -80,7 +80,7 @@ variable "domain_zone_id" {
 variable "lambda_runtime" {
   description = "Lambda function runtime"
   type        = string
-  default     = "python3.13"
+  default     = "python3.14"
 }
 
 variable "lambda_snap_start_enabled" {
