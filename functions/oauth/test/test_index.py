@@ -2,9 +2,8 @@ import json
 from io import BytesIO
 from unittest import mock
 
-with mock.patch("urllib.request.urlopen"):
-    with mock.patch("urllib.request.Request"):
-        import index
+with mock.patch("urllib.request.urlopen"), mock.patch("urllib.request.Request"):
+    import index
 
 
 class TestHandler:
@@ -17,7 +16,7 @@ class TestHandler:
         returned = index.handler(event)
         index.Request.assert_called_once_with(
             "https://slack.com/api/oauth.v2.access",
-            "client_id=FIZZ&client_secret=BUZZ&code=JAZZ".encode(),
+            b"client_id=FIZZ&client_secret=BUZZ&code=JAZZ",
             {"content-type": "application/x-www-form-urlencoded"},
             method="POST",
         )

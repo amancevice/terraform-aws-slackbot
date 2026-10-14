@@ -18,7 +18,7 @@ class SuppressFilter(logging.Filter):
 
     def filter(self, record):
         logger = record.name
-        return False if self.logger in logger else True
+        return self.logger not in logger
 
 
 class LambdaLoggerAdapter(logging.LoggerAdapter):
@@ -49,7 +49,7 @@ class LambdaLoggerAdapter(logging.LoggerAdapter):
         return logger
 
     def __init__(self, logger, extra=None):
-        super().__init__(logger, extra or dict(awsRequestId="-"))
+        super().__init__(logger, extra or {"awsRequestId": "-"})
 
     def bind(self, handler):
         """

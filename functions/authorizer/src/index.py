@@ -1,6 +1,6 @@
 import hmac
 import os
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from hashlib import sha256
 
 from logger import logger
