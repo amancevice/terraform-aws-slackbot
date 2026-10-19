@@ -68,6 +68,18 @@ variable "domain_name" {
   type        = string
 }
 
+variable "domain_security_policy" {
+  description = "Slack API custom domain TLS security policy"
+  type        = string
+  default     = null
+}
+
+variable "domain_endpoint_access_mode" {
+  description = "Slack API custom domain endpoint access mode (required for enhanced security policies)"
+  type        = string
+  default     = null
+}
+
 variable "domain_zone_id" {
   description = "Slack API Route53 hosted zone ID"
   type        = string

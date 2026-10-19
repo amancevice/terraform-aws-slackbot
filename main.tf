@@ -253,6 +253,8 @@ resource "aws_api_gateway_stage" "api" {
 resource "aws_api_gateway_domain_name" "api" {
   domain_name              = var.domain_name
   regional_certificate_arn = var.domain_certificate_arn
+  security_policy          = var.domain_security_policy
+  endpoint_access_mode     = var.domain_endpoint_access_mode
 
   endpoint_configuration {
     types = ["REGIONAL"]
