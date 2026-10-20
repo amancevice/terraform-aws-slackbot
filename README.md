@@ -35,6 +35,8 @@ Before applying this module you should have created the following resources:
 - ACM Certificate covering your app's subdomain (eg, `*.example.com`, `slack.example.com`)
 - A [Slack App](https://api.slack.com/apps) with a signing secret, OAuth client keys, and a default web API token
 
+Set `domain_security_policy` to customize TLS for the API's custom domain. Enhanced `SecurityPolicy_` values also require `domain_endpoint_access_mode` (`BASIC` or `STRICT`). Both inputs default to `null`, preserving provider defaults. See [API Gateway security policies](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-security-policies.html).
+
 ## SnapStart
 
 AWS Lambda supports [SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) for functions using Python v3.12+ or greater.
